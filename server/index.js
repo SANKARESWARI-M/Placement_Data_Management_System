@@ -1,135 +1,152 @@
 const express = require("express");
 const mysql = require("mysql2");
-const multer = require("multer");
 const cors = require("cors");
 const path = require("path");
+const multer = require("multer");
 
 const app = express();
-const PORT = 5000;
+const port = 5000;
 
-// Middleware
+// Enable CORS for front-end access
 app.use(cors());
+
+// Set up middleware to handle JSON and form data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Set up static folder for serving uploaded images
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ✅ MySQL Database Connection
-const db = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "Ramya@123",
-    database: "placement"
-});
-
-db.connect(err => {
-    if (err) {
-        console.error("Database Connection Error:", err);
-        return;
-    }
-    console.log("Connected to MySQL Database!");
-});
-
-// ✅ Multer Setup for File Uploads
+// Set up multer for handling file uploads
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "uploads/");
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // Set destination to 'uploads' folder
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname)); // Set unique file name
+  },
 });
 
 const upload = multer({ storage });
 
-// ✅ POST Route: Upload Data with Files (Includes Company Name and Other Details)
-app.post("/recruiters", upload.fields([
-    { name: "feedbackPdf" },
-    { name: "questionBankPdf" },
-    { name: "companyLogo" } // Company logo file upload
-]), (req, res) => {
-    console.log("Received form data:", req.body);
-    console.log("Received files:", req.files);
+// Create a MySQL connection
+const db = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: "Ramya@123", // Replace with your actual MySQL password
+  database: "placement", // Replace with your actual MySQL database name
+});
 
-    // Extract form data
-    const { year, noOfStudentsPlaced, company, description, ceoName, headquarters, highestSalary } = req.body;
+// Connect to MySQL database
+db.connect((err) => {
+  if (err) {
+    console.error("Error connecting to the database:", err);
+    process.exit(1);
+  }
+  console.log("Connected to the database.");
+});
 
-    // Ensure required fields are valid
-    const studentsCount = parseInt(noOfStudentsPlaced, 10);
-    if (!year || isNaN(studentsCount) || !company || !description || !ceoName || !headquarters || !highestSalary) {
-        return res.status(400).json({ message: "All fields are required and must be valid." });
+// API endpoint to fetch company logos
+app.get("/companies", async (req, res) => {
+  const query = "SELECT * FROM companies"; // Assuming a 'companies' table exists
+  try {
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error("Error fetching companies:", err);
+        return res.status(500).json({ message: "Error fetching companies." });
+      }
+      res.status(200).json({ companies: results });
+    });
+  } catch (error) {
+    console.error("Error fetching companies:", error);
+    res.status(500).json({ message: "Error fetching companies." });
+  }
+});
+
+// API endpoint to add a new company
+app.post("/add-company", upload.single("logo"), (req, res) => {
+  const { companyName, description, ceo, location } = req.body;
+  const logo = req.file ? req.file.filename : null;
+
+  if (!companyName || !description || !ceo || !location || !logo) {
+    return res.status(400).json({ message: "All fields are required." });
+  }
+
+  const query = "INSERT INTO companies (companyName, description, ceo, location, logo) VALUES (?, ?, ?, ?, ?)";
+  db.query(query, [companyName, description, ceo, location, logo], (err, results) => {
+    if (err) {
+      console.error("Error adding company:", err);
+      return res.status(500).json({ message: "Error adding company." });
+    }
+    res.status(201).json({ message: "Company added successfully.", company: req.body });
+  });
+});
+
+// API endpoint to fetch specific company details (using companyName)
+app.get("/companies/:companyName", (req, res) => {
+  const { companyName } = req.params;
+  const query = "SELECT * FROM companies WHERE companyName = ?";
+  db.query(query, [companyName], (err, results) => {
+    if (err) {
+      console.error("Error fetching company details:", err);
+      return res.status(500).json({ message: "Error fetching company details." });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Company not found." });
+    }
+    res.status(200).json({ company: results[0] });
+  });
+});
+
+// API endpoint to add placement details
+app.post("/add-placement", upload.fields([{ name: 'questionBank', maxCount: 1 }, { name: 'feedbackForm', maxCount: 1 }]), (req, res) => {
+  const { companyName, year, studentsPlaced } = req.body;
+  const questionBank = req.files?.questionBank ? req.files.questionBank[0].filename : null;
+  const feedbackForm = req.files?.feedbackForm ? req.files.feedbackForm[0].filename : null;
+
+  // Validate that 'studentsPlaced' is a positive number
+  if (isNaN(studentsPlaced) || studentsPlaced <= 0) {
+    return res.status(400).json({ message: "'studentsPlaced' must be a positive number." });
+  }
+
+  if (!companyName || !year || !studentsPlaced || !questionBank || !feedbackForm) {
+    return res.status(400).json({ message: "All fields are required." });
+  }
+
+  // Insert placement details into the 'placed_data' table
+  const query = "INSERT INTO placed_data (companyName, year, studentsPlaced, questionBank, feedbackForm) VALUES (?, ?, ?, ?, ?)";
+  db.query(query, [companyName, year, studentsPlaced, questionBank, feedbackForm], (err, results) => {
+    if (err) {
+      console.error("Error adding placement details:", err);
+      return res.status(500).json({ message: "Error adding placement details." });
+    }
+    res.status(201).json({ message: "Placement details added successfully." });
+  });
+});
+
+// API endpoint to fetch placement data for the bar graph
+// API endpoint to fetch placement data for the bar graph
+app.get("/placement-data", (req, res) => {
+  const query = "SELECT year, studentsPlaced FROM placed_data ORDER BY year DESC"; // Fetch year and studentsPlaced data sorted by year
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching placement data:", err);
+      return res.status(500).json({ message: "Error fetching placement data." });
     }
 
-    // Extract file paths
-    const feedback_form = req.files["feedbackPdf"] ? req.files["feedbackPdf"][0].filename : null;
-    const question_bank = req.files["questionBankPdf"] ? req.files["questionBankPdf"][0].filename : null;
-    const company_logo = req.files["companyLogo"] ? req.files["companyLogo"][0].filename : null;
+    // Log the fetched results to debug
+    console.log("Fetched placement data:", results);
 
-    // ✅ Insert Data into MySQL (Now includes additional fields)
-    const query = `
-        INSERT INTO recruiter_data (year, no_of_students, company, feedback_form, question_bank, description, ceo_name, headquarters, highest_salary, company_logo) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    if (results.length === 0) {
+      return res.status(404).json({ message: "No placement data available." });
+    }
 
-    db.query(query, [year, studentsCount, company, feedback_form, question_bank, description, ceoName, headquarters, highestSalary, company_logo], (err, result) => {
-        if (err) {
-            console.error("Database Insertion Error:", err);
-            return res.status(500).json({ message: "Error uploading data", error: err.message });
-        }
-        res.status(200).json({ message: "Data uploaded successfully!", data: result });
-    });
-});
-
-// ✅ GET Route: Fetch Data for a Specific Company
-app.get("/recruiters/:company", (req, res) => {
-    const company = req.params.company;
-
-    const companyInfoQuery = `
-        SELECT company, ceo_name, headquarters, highest_salary, company_logo 
-        FROM recruiter_data 
-        WHERE company = ? 
-        LIMIT 1
-    `;
-
-    const yearSpecificDataQuery = `
-        SELECT year, no_of_students, question_bank, feedback_form 
-        FROM recruiter_data 
-        WHERE company = ? ORDER BY year ASC
-    `;
-
-    // Fetch both the static company info and year-specific data
-    db.query(companyInfoQuery, [company], (err, companyInfoResults) => {
-        if (err) {
-            console.error("Error fetching company info:", err);
-            return res.status(500).json({ message: "Error retrieving company info", error: err.message });
-        }
-
-        if (companyInfoResults.length === 0) {
-            return res.status(404).json({ message: "Company not found" });
-        }
-
-        const companyInfo = companyInfoResults[0]; // Static information
-
-        // Fetch year-specific data
-        db.query(yearSpecificDataQuery, [company], (err, yearSpecificDataResults) => {
-            if (err) {
-                console.error("Error fetching year-specific data:", err);
-                return res.status(500).json({ message: "Error retrieving year-specific data", error: err.message });
-            }
-
-            const modifiedResults = yearSpecificDataResults.map(item => ({
-                year: item.year,
-                no_of_students: item.no_of_students,
-                question_bank_pdf: item.question_bank ? `http://localhost:5000/uploads/${item.question_bank}` : null,
-                feedback_form_pdf: item.feedback_form ? `http://localhost:5000/uploads/${item.feedback_form}` : null,
-            }));
-
-            res.status(200).json({ companyInfo, yearSpecificData: modifiedResults });
-        });
-    });
+    res.status(200).json({ placementData: results });
+  });
 });
 
 
-// ✅ Start Server
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
 });

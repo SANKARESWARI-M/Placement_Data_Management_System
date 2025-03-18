@@ -1,176 +1,122 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom'; // Import Link from React Router
 
 const AdminRecruiters = () => {
-  const [year, setYear] = useState('');
-  const [company, setCompany] = useState('');
-  const [noOfStudentsPlaced, setNoOfStudentsPlaced] = useState('');
-  const [feedbackPdf, setFeedbackPdf] = useState(null);
-  const [questionBankPdf, setQuestionBankPdf] = useState(null);
-  const [companyLogo, setCompanyLogo] = useState(null);  // For logo image
-  const [description, setDescription] = useState('');  // Company description
-  const [ceoName, setCeoName] = useState('');  // CEO Name
-  const [headquarters, setHeadquarters] = useState('');  // Headquarters location
-  const [highestSalary, setHighestSalary] = useState('');  // Highest salary
-  const [errorMessage, setErrorMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [companyData, setCompanyData] = useState({
+    companyName: '',
+    description: '',
+    ceo: '',
+    location: '',
+    logo: null,
+  });
+
+  const [companyLogos, setCompanyLogos] = useState([]);
+
+  useEffect(() => {
+    const fetchCompanyLogos = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/companies');
+        console.log(response.data);
+        setCompanyLogos(response.data.companies);
+      } catch (error) {
+        console.error('Error fetching companies:', error.response ? error.response.data : error.message);
+      }
+    };
+
+    fetchCompanyLogos();
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setCompanyData({ ...companyData, [name]: value });
+  };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (e.target.name === 'feedbackPdf') {
-      setFeedbackPdf(file);
-    } else if (e.target.name === 'questionBankPdf') {
-      setQuestionBankPdf(file);
-    } else if (e.target.name === 'companyLogo') {
-      setCompanyLogo(file);  // Handle company logo image
-    }
+    setCompanyData({ ...companyData, logo: e.target.files[0] });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
-    setLoading(true);
 
-    if (!year || !company || !noOfStudentsPlaced || !ceoName || !headquarters || !highestSalary) {
-      setErrorMessage('All fields are required!');
-      setLoading(false);
-      return;
-    }
-
-    // Prepare form data
     const formData = new FormData();
-    formData.append('year', year);
-    formData.append('company', company);
-    formData.append('noOfStudentsPlaced', noOfStudentsPlaced);
-    formData.append('description', description);
-    formData.append('ceoName', ceoName);
-    formData.append('headquarters', headquarters);
-    formData.append('highestSalary', highestSalary);
-    if (feedbackPdf) formData.append('feedbackPdf', feedbackPdf);
-    if (questionBankPdf) formData.append('questionBankPdf', questionBankPdf);
-    if (companyLogo) formData.append('companyLogo', companyLogo);  // Add company logo file
+    formData.append('companyName', companyData.companyName);
+    formData.append('description', companyData.description);
+    formData.append('ceo', companyData.ceo);
+    formData.append('location', companyData.location);
+    formData.append('logo', companyData.logo);
 
     try {
-      // Send data to the backend
-      const response = await axios.post('http://localhost:5000/recruiters', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const response = await axios.post('http://localhost:5000/add-company', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
-      console.log(response.data);
-      alert('Data uploaded successfully!');
-
-      // Reset form
-      setYear('');
-      setCompany('');
-      setNoOfStudentsPlaced('');
-      setDescription('');
-      setCeoName('');
-      setHeadquarters('');
-      setHighestSalary('');
-      setFeedbackPdf(null);
-      setQuestionBankPdf(null);
-      setCompanyLogo(null);  // Reset company logo
-      setLoading(false);
+      console.log('Company added:', response.data);
+      // You can add code to update the UI after successful submission (e.g., reset form or fetch updated companies)
     } catch (error) {
-      console.error('Error uploading data:', error);
-      setErrorMessage('Error uploading data: ' + (error.response?.data?.message || error.message));
-      setLoading(false);
+      console.error('Error adding company:', error.response ? error.response.data : error.message);
     }
   };
 
   return (
     <div>
-      <h1>Admin - Recruiter Data</h1>
-      {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>}
+      <h2>Add New Company</h2>
       <form onSubmit={handleSubmit}>
-        <div>
-          <label>Year:</label>
-          <input
-            type="text"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label>Company Name:</label>
-          <input
-            type="text"
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label>No of Students Placed:</label>
-          <input
-            type="number"
-            value={noOfStudentsPlaced}
-            onChange={(e) => setNoOfStudentsPlaced(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label>Company Logo:</label>
-          <input
-            type="file"
-            name="companyLogo"
-            onChange={handleFileChange}
-          />
-        </div>
-        <div>
-          <label>Description:</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        <div>
-          <label>CEO Name:</label>
-          <input
-            type="text"
-            value={ceoName}
-            onChange={(e) => setCeoName(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label>Headquarters:</label>
-          <input
-            type="text"
-            value={headquarters}
-            onChange={(e) => setHeadquarters(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label>Highest Salary:</label>
-          <input
-            type="number"
-            value={highestSalary}
-            onChange={(e) => setHighestSalary(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label>Feedback PDF:</label>
-          <input
-            type="file"
-            name="feedbackPdf"
-            onChange={handleFileChange}
-          />
-        </div>
-        <div>
-          <label>Question Bank PDF:</label>
-          <input
-            type="file"
-            name="questionBankPdf"
-            onChange={handleFileChange}
-          />
-        </div>
-        <button type="submit" disabled={loading}>
-          {loading ? 'Uploading...' : 'Submit'}
-        </button>
+        <input
+          type="text"
+          name="companyName"
+          placeholder="Company Name"
+          value={companyData.companyName}
+          onChange={handleChange}
+        />
+        <input
+          type="text"
+          name="description"
+          placeholder="Description"
+          value={companyData.description}
+          onChange={handleChange}
+        />
+        <input
+          type="text"
+          name="ceo"
+          placeholder="CEO"
+          value={companyData.ceo}
+          onChange={handleChange}
+        />
+        <input
+          type="text"
+          name="location"
+          placeholder="Location"
+          value={companyData.location}
+          onChange={handleChange}
+        />
+        <input
+          type="file"
+          name="logo"
+          onChange={handleFileChange}
+        />
+        <button type="submit">Add Company</button>
       </form>
+
+      <h3>Company Logos</h3>
+      <div className="company-logos">
+        {companyLogos.length > 0 ? (
+          companyLogos.map((company) => (
+            <div key={company.companyName} className="company-logo">
+              <Link to={`/company/${company.companyName}`} state={{ company }}>
+                <img
+                  src={`http://localhost:5000/uploads/${company.logo}`} // Correct path for the image
+                  alt={company.companyName}
+                  style={{ width: '100px', height: 'auto', margin: '10px', cursor: 'pointer' }}
+                />
+              </Link>
+            </div>
+          ))
+        ) : (
+          <p>No company logos available</p>
+        )}
+      </div>
     </div>
   );
 };
