@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const mysql = require("mysql2");
 const cors = require("cors");
@@ -7,146 +8,491 @@ const multer = require("multer");
 const app = express();
 const port = 5000;
 
-// Enable CORS for front-end access
+// Enable CORS
 app.use(cors());
-
-// Set up middleware to handle JSON and form data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Set up static folder for serving uploaded images
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Set up multer for handling file uploads
+// Multer setup for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Set destination to 'uploads' folder
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Set unique file name
-  },
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
 });
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+  if (!allowedTypes.includes(file.mimetype)) {
+    return cb(new Error("Only JPEG, PNG, and PDF files are allowed."), false);
+  }
+  cb(null, true);
+};
+const upload = multer({ storage, fileFilter });
 
-const upload = multer({ storage });
-
-// Create a MySQL connection
-const db = mysql.createConnection({
+// MySQL Connection (Use Pool for better handling)
+const db = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "Ramya@123", // Replace with your actual MySQL password
-  database: "placement", // Replace with your actual MySQL database name
+  password: "Ramya@123",
+  database: "placement",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
-// Connect to MySQL database
-db.connect((err) => {
+// Check DB Connection
+db.getConnection((err, connection) => {
   if (err) {
-    console.error("Error connecting to the database:", err);
-    process.exit(1);
-  }
-  console.log("Connected to the database.");
-});
-
-// API endpoint to fetch company logos
-app.get("/companies", async (req, res) => {
-  const query = "SELECT * FROM companies"; // Assuming a 'companies' table exists
-  try {
-    db.query(query, (err, results) => {
-      if (err) {
-        console.error("Error fetching companies:", err);
-        return res.status(500).json({ message: "Error fetching companies." });
-      }
-      res.status(200).json({ companies: results });
-    });
-  } catch (error) {
-    console.error("Error fetching companies:", error);
-    res.status(500).json({ message: "Error fetching companies." });
+    console.error("Database connection failed:", err);
+  } else {
+    console.log("Connected to MySQL database.");
+    connection.release();
   }
 });
 
-// API endpoint to add a new company
-app.post("/add-company", upload.single("logo"), (req, res) => {
-  const { companyName, description, ceo, location } = req.body;
-  const logo = req.file ? req.file.filename : null;
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-  if (!companyName || !description || !ceo || !location || !logo) {
-    return res.status(400).json({ message: "All fields are required." });
-  }
 
-  const query = "INSERT INTO companies (companyName, description, ceo, location, logo) VALUES (?, ?, ?, ?, ?)";
-  db.query(query, [companyName, description, ceo, location, logo], (err, results) => {
+// Ensure Indexes Exist (Workaround for IF NOT EXISTS)
+const createIndexQuery = (indexName, tableName, columnName) => {
+  return `CREATE INDEX ${indexName} ON ${tableName} (${columnName})`;
+};
+
+db.query(createIndexQuery("idx_companyName", "companies", "companyName"), (err) => {
+  if (err && err.code !== 'ER_DUP_KEYNAME') console.error("Error creating index:", err);
+});
+db.query(createIndexQuery("idx_year", "placed_data", "year"), (err) => {
+  if (err && err.code !== 'ER_DUP_KEYNAME') console.error("Error creating index:", err);
+});
+
+
+
+///upcoming drives
+
+app.post("/api/upcoming-drives", upload.single('post'), (req, res) => {
+  const { company_name, eligibility, date, time, venue, role, package } = req.body; // Changed 'salary' to 'package'
+  const postFilePath = req.file ? req.file.filename : null;
+
+  // Convert empty package to NULL or a default value
+  const packageValue = package && !isNaN(package) ? package : null; // Ensure it's a valid number
+
+  const query = `
+    INSERT INTO upcomingdrives (post, company_name, eligibility, date, time, venue, roles, package)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(query, [postFilePath, company_name, eligibility, date, time, venue, role, packageValue], (err, result) => {
     if (err) {
-      console.error("Error adding company:", err);
-      return res.status(500).json({ message: "Error adding company." });
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
     }
-    res.status(201).json({ message: "Company added successfully.", company: req.body });
+    res.status(201).json({ message: "Upcoming drive added successfully!" });
   });
 });
 
-// API endpoint to fetch specific company details (using companyName)
-app.get("/companies/:companyName", (req, res) => {
-  const { companyName } = req.params;
-  const query = "SELECT * FROM companies WHERE companyName = ?";
-  db.query(query, [companyName], (err, results) => {
-    if (err) {
-      console.error("Error fetching company details:", err);
-      return res.status(500).json({ message: "Error fetching company details." });
-    }
-    if (results.length === 0) {
-      return res.status(404).json({ message: "Company not found." });
-    }
-    res.status(200).json({ company: results[0] });
-  });
-});
 
-// API endpoint to add placement details
-app.post("/add-placement", upload.fields([{ name: 'questionBank', maxCount: 1 }, { name: 'feedbackForm', maxCount: 1 }]), (req, res) => {
-  const { companyName, year, studentsPlaced } = req.body;
-  const questionBank = req.files?.questionBank ? req.files.questionBank[0].filename : null;
-  const feedbackForm = req.files?.feedbackForm ? req.files.feedbackForm[0].filename : null;
-
-  // Validate that 'studentsPlaced' is a positive number
-  if (isNaN(studentsPlaced) || studentsPlaced <= 0) {
-    return res.status(400).json({ message: "'studentsPlaced' must be a positive number." });
-  }
-
-  if (!companyName || !year || !studentsPlaced || !questionBank || !feedbackForm) {
-    return res.status(400).json({ message: "All fields are required." });
-  }
-
-  // Insert placement details into the 'placed_data' table
-  const query = "INSERT INTO placed_data (companyName, year, studentsPlaced, questionBank, feedbackForm) VALUES (?, ?, ?, ?, ?)";
-  db.query(query, [companyName, year, studentsPlaced, questionBank, feedbackForm], (err, results) => {
-    if (err) {
-      console.error("Error adding placement details:", err);
-      return res.status(500).json({ message: "Error adding placement details." });
-    }
-    res.status(201).json({ message: "Placement details added successfully." });
-  });
-});
-
-// API endpoint to fetch placement data for the bar graph
-// API endpoint to fetch placement data for the bar graph
-app.get("/placement-data", (req, res) => {
-  const query = "SELECT year, studentsPlaced FROM placed_data ORDER BY year DESC"; // Fetch year and studentsPlaced data sorted by year
+//fetch the upcoming details
+app.get("/api/upcoming-drives", (req, res) => {
+  const query = "SELECT * FROM upcomingdrives";
   db.query(query, (err, results) => {
     if (err) {
-      console.error("Error fetching placement data:", err);
-      return res.status(500).json({ message: "Error fetching placement data." });
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
+    }
+    res.status(200).json(results);
+  });
+});
+app.get("/api/student-upcoming-drives", (req, res) => {
+  const query = "SELECT * FROM upcomingdrives";
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
+    }
+    res.status(200).json(results);
+  });
+});
+
+
+
+
+
+//login
+
+app.post("/api/login", (req, res) => {
+  const { username, password } = req.body;
+
+  const query = "SELECT * FROM users WHERE userName = ? AND password = ?";
+  db.query(query, [username, password], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
     }
 
-    // Log the fetched results to debug
-    console.log("Fetched placement data:", results);
-
-    if (results.length === 0) {
-      return res.status(404).json({ message: "No placement data available." });
+    if (result.length > 0) {
+      const userRole = result[0].role;
+      return res.json({ message: "Login successful", role: userRole });
+    } else {
+      return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    res.status(200).json({ placementData: results });
   });
 });
 
 
-// Start the server
+
+// Routes
+app.get("/companies", (req, res) => {
+  db.query("SELECT * FROM companies", (err, results) => {
+    if (err) return res.status(500).json({ message: "Error fetching companies." });
+    res.status(200).json({ companies: results });
+  });
+});
+
+
+
+app.post("/add-company", upload.single("logo"), async (req, res) => {
+  try {
+      const { companyName, description, ceo, location, package, objective } = req.body;
+      let { skillSets, localBranches, roles } = req.body;
+
+      console.log("Received Data:", req.body); // ✅ Debugging Request Data
+      console.log("Uploaded File:", req.file); // ✅ Debugging File Upload
+
+      // ✅ Fix: Parse JSON fields correctly
+      try {
+          skillSets = skillSets ? JSON.parse(skillSets) : [];
+          localBranches = localBranches ? JSON.parse(localBranches) : [];
+          roles = roles ? JSON.parse(roles) : [];
+      } catch (error) {
+          console.error("JSON Parsing Error:", error);
+          return res.status(400).json({ message: "Invalid JSON format in skillSets, localBranches, or roles." });
+      }
+
+      // ✅ Ensure all fields are provided
+      if (!companyName || !description || !ceo || !location || !package || !objective ||
+          skillSets.length === 0 || localBranches.length === 0 || roles.length === 0) {
+          return res.status(400).json({ message: "All fields are required." });
+      }
+
+      // ✅ Check if a logo was uploaded
+      const logo = req.file ? req.file.filename : null;
+
+      // ✅ Log final data before inserting into MySQL
+      console.log("Final Data for MySQL:", {
+          companyName, description, ceo, location, package, objective,
+          skillSets, localBranches, roles, logo
+      });
+
+      // ✅ Fix: Insert into MySQL database
+      const sql = `INSERT INTO company 
+                   (companyName, description, ceo, location, package, objective, skillSets, localBranches, roles, logo)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+      await db.promise().query(sql, [
+          companyName, description, ceo, location, package, objective,
+          JSON.stringify(skillSets), JSON.stringify(localBranches), JSON.stringify(roles), logo
+      ]);
+
+      res.json({ message: "Company added successfully", company: { companyName, logo } });
+
+  } catch (error) {
+      console.error("Server Error:", error);
+      res.status(500).json({ message: "Internal Server Error.", error: error.message });
+  }
+});
+
+
+// API to get total recruiters count
+app.get("/api/recruiters/count", (req, res) => {
+  const query = "SELECT COUNT(*) AS total FROM companies";
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching recruiter count:", err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    res.json({ total: results[0].total });
+  });
+});
+
+//get total placed_student
+app.get("/placed-student", (req, res) => {
+  const { companyName } = req.query;
+  db.query(
+    "SELECT year, COUNT(*) AS student_count FROM placed_student WHERE company_name = ? GROUP BY year ORDER BY year",
+    [companyName],
+    (err, result) => {
+      if (err) {
+        console.error("Error fetching placement data:", err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json(result);
+    }
+  );
+});
+
+
+// fetch the details for front page
+app.get("/stats", (req, res) => {
+  const query = `
+    SELECT COUNT(*) AS total_students, AVG(package) AS avg_salary FROM placed_student;
+  `;
+  db.query(query, (err, result) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.json(result[0]);
+    }
+  });
+});
+
+
+
+app.get("/placed-student-companies", (req, res) => {
+  db.query("SELECT DISTINCT company_name FROM placed_student", (err, result) => {
+    if (err) {
+      console.error("Error fetching companies from placed_student:", err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    if (!result || result.length === 0) {
+      console.warn("No companies found in placed_student table.");
+      return res.json([]); // ✅ Return an empty array instead of an object
+    }
+
+    console.log("Companies API Response from placed_student:", result);
+    res.json(result); // ✅ Return a direct array (Correct)
+  });
+});
+
+app.get("/student-details", (req, res) => {
+  const { companyName, year } = req.query;
+  db.query(
+    "SELECT name, regno, role, package FROM placed_student WHERE company_name = ? AND year = ?",
+    [companyName, year],
+    (err, result) => {
+      if (err) {
+        console.error("Error fetching student details:", err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json(result);
+    }
+  );
+});
+
+
+
+
+// API to get student count per year for a selected company
+app.get("/students-per-year", (req, res) => {
+  const company = req.query.company;
+  db.query(
+    "SELECT year, COUNT(*) AS student_count FROM placed_student WHERE company_name = ? GROUP BY year ORDER BY year",
+    [company],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(result);
+    }
+  );
+});
+
+// API to get student details for a selected year and company
+app.get("/students-details", (req, res) => {
+  const { company, year } = req.query;
+  db.query(
+    "SELECT name, regno, role, package FROM placed_student WHERE company_name = ? AND year = ?",
+    [company, year],
+    (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(result);
+    }
+  );
+})
+
+app.get("/placed-students", (req, res) => {
+  db.query(
+    "SELECT name, regno, company_name, role, package, year FROM placed_student",
+    (err, result) => {
+      if (err) {
+        console.error("Error fetching placed students:", err);
+        return res.status(500).json({ error: err.message });
+      }
+      res.json(result);
+    }
+  );
+});
+
+app.get("/placed-students", (req, res) => {
+  const { company } = req.query;
+  let sql = "SELECT name, regno, company_name, role, package, year FROM placed_student";
+  const params = [];
+
+  if (company) {
+    sql += " WHERE company_name = ?";
+    params.push(company);
+  }
+
+  db.query(sql, params, (err, result) => {
+    if (err) {
+      console.error("Error fetching students:", err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(result);
+  });
+});
+
+
+
+//display for  student recruiters
+
+app.get("/api/recruiters", (req, res) => {
+  const query = "SELECT companyName, logo FROM companies";
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching recruiters:", err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+    res.json({ recruiters: results });
+  });
+});
+
+
+app.get("/api/upcoming-drives", (req, res) => {
+  const query = "SELECT * FROM upcomingdrives";
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
+    }
+    res.status(200).json(results);
+  });
+});
+app.get("/api/student-upcoming-drives", (req, res) => {
+  const query = "SELECT * FROM upcomingdrives";
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
+    }
+    res.status(200).json(results);
+  });
+});
+
+
+
+const formatValue = (value) => (value === "" ? null : value);
+app.post("/api/student-profile", (req, res) => {
+  try {
+    const {
+      regno, name, batch, hsc_percentage, sslc_percentage,
+      sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa,
+      sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear,
+      address, student_mobile, secondary_mobile, college_email, personal_email,
+      aadhar_number, pancard_number, passport
+    } = req.body;
+
+    const query = `
+      INSERT INTO student_details (
+        regno, name, batch, hsc_percentage, sslc_percentage, 
+        sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa, 
+        sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear, 
+        address, student_mobile, secondary_mobile, college_email, personal_email, 
+        aadhar_number, pancard_number, passport
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE 
+        name=VALUES(name), batch=VALUES(batch), hsc_percentage=VALUES(hsc_percentage),
+        sslc_percentage=VALUES(sslc_percentage), sem1_cgpa=VALUES(sem1_cgpa), sem2_cgpa=VALUES(sem2_cgpa), 
+        sem3_cgpa=VALUES(sem3_cgpa), sem4_cgpa=VALUES(sem4_cgpa), sem5_cgpa=VALUES(sem5_cgpa),
+        sem6_cgpa=VALUES(sem6_cgpa), sem7_cgpa=VALUES(sem7_cgpa), sem8_cgpa=VALUES(sem8_cgpa), 
+        history_of_arrear=VALUES(history_of_arrear), standing_arrear=VALUES(standing_arrear),
+        address=VALUES(address), student_mobile=VALUES(student_mobile), secondary_mobile=VALUES(secondary_mobile),
+        college_email=VALUES(college_email), personal_email=VALUES(personal_email),
+        aadhar_number=VALUES(aadhar_number), pancard_number=VALUES(pancard_number), passport=VALUES(passport)
+    `;
+
+    const values = [
+      regno, name, batch, hsc_percentage, sslc_percentage,
+      formatValue(sem1_cgpa), formatValue(sem2_cgpa), formatValue(sem3_cgpa), formatValue(sem4_cgpa), formatValue(sem5_cgpa),
+      formatValue(sem6_cgpa), formatValue(sem7_cgpa), formatValue(sem8_cgpa), history_of_arrear, standing_arrear,
+      address, student_mobile, secondary_mobile, college_email, personal_email,
+      aadhar_number, pancard_number, passport
+    ];
+
+    db.query(query, values, (err, result) => {
+      if (err) {
+        console.error("Error inserting/updating student profile:", err);
+        return res.status(500).json({ error: "Database error" });
+      }
+      res.json({ message: "Profile saved successfully!" });
+    });
+
+  } catch (error) {
+    console.error("Server error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+app.post("/api/register-drive", (req, res) => {
+  const { drive_id, regno, company_name, register } = req.body;
+
+  const query = `
+    INSERT INTO registered_student (id, regno, company_name, register)
+    VALUES (?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE register=VALUES(register)
+  `;
+
+  db.query(query, [drive_id, regno, company_name, register], (err, result) => {
+    if (err) {
+      console.error("Error inserting into registered_student:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+    res.json({ message: "Drive registration updated successfully!" });
+  });
+});
+
+
+app.get('/api/registered-drives/:regno', async (req, res) => {
+  const { regno } = req.params;
+  
+  console.log(`Received request for registered drives of regno: ${regno}`); // Debugging log
+
+  try {
+    // Ensure regno is not empty
+    if (!regno) {
+      return res.status(400).json({ error: "Regno parameter is required" });
+    }
+
+    const sql = "SELECT company_name FROM registered_student WHERE regno = ?";
+    const [results] = await db.promise().query(sql, [regno]);
+
+    if (results.length === 0) {
+      console.warn(`No registered drives found for regno: ${regno}`);
+      return res.status(404).json({ error: "No registered drives found for this student" });
+    }
+
+    console.log(`Found ${results.length} drives for regno: ${regno}`); // Debugging log
+    res.json(results);
+
+  } catch (error) {
+    console.error("Error fetching registered drives:", error);
+    res.status(500).json({ error: "Failed to fetch registered drives" });
+  }
+});
+
+
+
+
+
+
+
+
+// Global error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: "Something went wrong!", error: err.message });
+});
+
+// Start server
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
