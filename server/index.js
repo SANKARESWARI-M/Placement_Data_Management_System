@@ -1,9 +1,19 @@
-require("dotenv").config();
-const express = require("express");
-const mysql = require("mysql2");
-const cors = require("cors");
-const path = require("path");
-const multer = require("multer");
+import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
+import mysql from "mysql2";
+import cors from "cors";
+import path from "path";
+import multer from "multer";
+import bodyParser from "body-parser";
+import { fileURLToPath } from "url";
+import nodemailer from "nodemailer";
+import { connect } from "http2";
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = 5000;
@@ -65,15 +75,16 @@ db.query(createIndexQuery("idx_year", "placed_data", "year"), (err) => {
 });
 
 
-
+//-------------------------------------------------------------------------
 ///upcoming drives
-
 app.post("/api/upcoming-drives", upload.single('post'), (req, res) => {
-  const { company_name, eligibility, date, time, venue, role, package } = req.body; // Changed 'salary' to 'package'
+  const { company_name, eligibility, date, time, venue, role } = req.body; 
+  const salaryPackage = req.body.package; // Renamed 'package' to 'salaryPackage'
+
   const postFilePath = req.file ? req.file.filename : null;
 
-  // Convert empty package to NULL or a default value
-  const packageValue = package && !isNaN(package) ? package : null; // Ensure it's a valid number
+  // Convert empty salaryPackage to NULL or a default value
+  const packageValue = salaryPackage && !isNaN(salaryPackage) ? salaryPackage : null; 
 
   const query = `
     INSERT INTO upcomingdrives (post, company_name, eligibility, date, time, venue, roles, package)
@@ -89,8 +100,7 @@ app.post("/api/upcoming-drives", upload.single('post'), (req, res) => {
   });
 });
 
-
-//fetch the upcoming details
+// Fetch the upcoming details
 app.get("/api/upcoming-drives", (req, res) => {
   const query = "SELECT * FROM upcomingdrives";
   db.query(query, (err, results) => {
@@ -101,6 +111,7 @@ app.get("/api/upcoming-drives", (req, res) => {
     res.status(200).json(results);
   });
 });
+
 app.get("/api/student-upcoming-drives", (req, res) => {
   const query = "SELECT * FROM upcomingdrives";
   db.query(query, (err, results) => {
@@ -109,10 +120,42 @@ app.get("/api/student-upcoming-drives", (req, res) => {
       return res.status(500).json({ message: "Database error" });
     }
     res.status(200).json(results);
-  });
+  });
 });
 
+// Deleting an upcoming drive post
+app.delete('/api/upcoming-drives/:id', async (req, res) => {
+  const { id } = req.params;
 
+  try {
+      await db.promise().query('DELETE FROM upcomingdrives WHERE id = ?', [id]);
+      res.status(200).send({ message: 'Drive deleted successfully' });
+  } catch (error) {
+      console.error('Error deleting drive:', error);
+      res.status(500).send({ message: 'Error deleting drive' });
+  }
+});
+
+// New route that had the issue
+app.post("/api/company-details", (req, res) => {
+  const { companyName, description, ceo, location, objective } = req.body;
+  const salaryPackage = req.body.package; // Renamed 'package' to 'salaryPackage'
+
+  const query = `
+    INSERT INTO companydetails (company_name, description, ceo, location, salary_package, objective)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(query, [companyName, description, ceo, location, salaryPackage, objective], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
+    }
+    res.status(201).json({ message: "Company details added successfully!" });
+  });
+});
+
+//------------------------------------------------------------------------------
 
 
 
@@ -152,7 +195,8 @@ app.get("/companies", (req, res) => {
 
 app.post("/add-company", upload.single("logo"), async (req, res) => {
   try {
-      const { companyName, description, ceo, location, package, objective } = req.body;
+      const { companyName, description, ceo, location, objective } = req.body;
+      const salaryPackage = req.body.package; // Renamed 'package' to 'salaryPackage'
       let { skillSets, localBranches, roles } = req.body;
 
       console.log("Received Data:", req.body); // ✅ Debugging Request Data
@@ -169,7 +213,7 @@ app.post("/add-company", upload.single("logo"), async (req, res) => {
       }
 
       // ✅ Ensure all fields are provided
-      if (!companyName || !description || !ceo || !location || !package || !objective ||
+      if (!companyName || !description || !ceo || !location || !salaryPackage || !objective ||
           skillSets.length === 0 || localBranches.length === 0 || roles.length === 0) {
           return res.status(400).json({ message: "All fields are required." });
       }
@@ -179,17 +223,17 @@ app.post("/add-company", upload.single("logo"), async (req, res) => {
 
       // ✅ Log final data before inserting into MySQL
       console.log("Final Data for MySQL:", {
-          companyName, description, ceo, location, package, objective,
+          companyName, description, ceo, location, salaryPackage, objective,
           skillSets, localBranches, roles, logo
       });
 
       // ✅ Fix: Insert into MySQL database
-      const sql = `INSERT INTO company 
+      const sql = `INSERT INTO companies
                    (companyName, description, ceo, location, package, objective, skillSets, localBranches, roles, logo)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
       await db.promise().query(sql, [
-          companyName, description, ceo, location, package, objective,
+          companyName, description, ceo, location, salaryPackage, objective,
           JSON.stringify(skillSets), JSON.stringify(localBranches), JSON.stringify(roles), logo
       ]);
 
@@ -202,6 +246,7 @@ app.post("/add-company", upload.single("logo"), async (req, res) => {
 });
 
 
+
 // API to get total recruiters count
 app.get("/api/recruiters/count", (req, res) => {
   const query = "SELECT COUNT(*) AS total FROM companies";
@@ -212,6 +257,30 @@ app.get("/api/recruiters/count", (req, res) => {
     }
     res.json({ total: results[0].total });
   });
+});
+
+
+
+
+
+app.post("/api/placed-students", async (req, res) => {
+  try {
+    const { regno, name, company_name, role, salarypackage, year } = req.body;
+
+    // Ensure all fields are provided
+    if (!regno || !name || !company_name || !role || !salarypackage || !year) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Insert data into MySQL
+    const query = `INSERT INTO placed_student (regno, name, company_name, role, package, year) VALUES (?, ?, ?, ?, ?, ?)`;
+    await db.promise().query(query, [regno, name, company_name, role, salarypackage, year]);
+
+    res.status(201).json({ message: "Placement details added successfully!" });
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({ message: "Database error", error: error.message });
+  }
 });
 
 //get total placed_student
@@ -476,6 +545,86 @@ app.get('/api/registered-drives/:regno', async (req, res) => {
   } catch (error) {
     console.error("Error fetching registered drives:", error);
     res.status(500).json({ error: "Failed to fetch registered drives" });
+  }
+});
+
+
+
+
+
+//delete unselected students
+app.delete("/api/delete-unselected-students", (req, res) => {
+  const selectedRegnos = req.body.selectedRegnos; // Array of selected students' regnos
+
+  if (!selectedRegnos || !Array.isArray(selectedRegnos)) {
+    return res.status(400).json({ error: "Invalid request. Selected students are required." });
+  }
+
+  const sql = `DELETE FROM registered_student WHERE regno NOT IN (?)`;
+
+  db.query(sql, [selectedRegnos], (err, result) => {
+    if (err) {
+      console.error("Error deleting unselected students:", err);
+      return res.status(500).json({ error: "Failed to delete unselected students." });
+    }
+
+    res.json({ message: "Unselected students deleted successfully!" });
+  });
+});
+
+
+
+app.get("/api/admin-registered-students", (req, res) => {
+  const query = `
+    SELECT rs.id, rs.regno, sd.name, rs.company_name, sd.college_email,sd.batch, 
+           sd.hsc_percentage, sd.sslc_percentage, sd.sem1_cgpa AS cgpa, 
+           sd.history_of_arrear, sd.standing_arrear
+    FROM registered_student rs
+    JOIN student_details sd ON rs.regno = sd.regno
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching registered students:", err);
+      return res.status(500).json({ error: "Database error" });
+    }
+    res.json(results);
+  });
+});
+
+//send mail
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+      user: "2212052@nec.edu.in",  // Replace with your Gmail
+      pass: "iiov biog vknw nznn",  // Replace with your generated App Password
+  },
+});
+
+app.post("/api/send-emails", async (req, res) => {
+  const { students, round } = req.body;
+
+  if (!students || students.length === 0) {
+      return res.status(400).json({ error: "No students selected" });
+  }
+
+  try {
+      for (const student of students) {
+          const mailOptions = {
+              from: "2212052@nec.edu.in",
+              to: student.college_email,
+              subject: `Shortlisted for Next Round (${round})`,
+              text: `Dear ${student.name},\n\nCongratulations! You have been shortlisted for the next round (${round}). Please check further details with your placement officer.\n\nBest Regards,\nPlacement Cell`,
+          };
+
+          await transporter.sendMail(mailOptions);
+      }
+
+      res.json({ message: "Emails sent successfully!" });
+  } catch (error) {
+      console.error("Error sending emails:", error);
+      res.status(500).json({ error: "Failed to send emails" });
   }
 });
 
