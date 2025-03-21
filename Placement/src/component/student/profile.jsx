@@ -8,8 +8,19 @@ const StudentProfile = () => {
         regno: "",
         name: "",
         batch: "",
+        degree:"",
+        dept:"",
+        gender:"",
+        dob:"",
         hsc_percentage: "",
         sslc_percentage: "",
+        sslcSchoolName:"",
+        sslcBoard:"",
+        sslcYear:"",
+        hscSchoolName: "",
+        hscBoard: "",
+        hscYear: "",
+        hsccutoff: "",
         sem1_cgpa: "",
         sem2_cgpa: "",
         sem3_cgpa: "",
@@ -18,6 +29,7 @@ const StudentProfile = () => {
         sem6_cgpa: "",
         sem7_cgpa: "",
         sem8_cgpa: "",
+        cgpaOverall: "",
         history_of_arrear: "No",
         standing_arrear: "No",
         address: "",
@@ -27,7 +39,8 @@ const StudentProfile = () => {
         personal_email: "",
         aadhar_number: "",
         pancard_number: "",
-        passport: "No"
+        passport: "No",
+        placementWilling: "Yes"
     });
 
     const handleChange = (e) => {
@@ -81,20 +94,40 @@ const StudentProfile = () => {
           <div className="profile-container">
             <h2>Student Profile</h2>
             <form onSubmit={handleSubmit}>
-                <input type="text" name="regno" placeholder="Register Number" onChange={handleChange} required />
+            <input type="text" name="regno" placeholder="Register Number" onChange={handleChange} required />
                 <input type="text" name="name" placeholder="Name" onChange={handleChange} required />
                 <input type="text" name="batch" placeholder="Batch" onChange={handleChange} required />
-                <input type="number" step='0.01' name="hsc_percentage" placeholder="HSC Percentage" onChange={handleChange} required />
-                <input type="number" step='0.01' name="sslc_percentage" placeholder="SSLC Percentage" onChange={handleChange} required />
+                <input type="text" name="degree" placeholder="Degree" onChange={handleChange} required />
+                <input type="text" name="dept" placeholder="Department" onChange={handleChange} required />
+                <select name="gender" onChange={handleChange} required>
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+                <input type="date" name="dob" onChange={handleChange} required />
+
+                <input type="text" name="sslcSchoolName" placeholder="SSLC School Name" onChange={handleChange} required />
+                <input type="text" name="sslcBoard" placeholder="SSLC Board" onChange={handleChange} required />
+                <input type="number" name="sslcYear" placeholder="SSLC Year" onChange={handleChange} required />
+
+                <input type="text" name="hscSchoolName" placeholder="HSC School Name" onChange={handleChange} required />
+                <input type="text" name="hscBoard" placeholder="HSC Board" onChange={handleChange} required />
+                <input type="number" name="hscYear" placeholder="HSC Year" onChange={handleChange} required />
+                <input type="number" name="hsccutoff" placeholder="HSC Cutoff" onChange={handleChange} required />
+
+                <input type="number" step="0.01" name="hsc_percentage" placeholder="HSC Percentage" onChange={handleChange} required />
+                <input type="number" step="0.01" name="sslc_percentage" placeholder="SSLC Percentage" onChange={handleChange} required />
                 
-                <input type="number" step='0.01' name="sem1_cgpa" placeholder="1st Sem CGPA" onChange={handleChange} required/>
-                <input type="number" step='0.01' name="sem2_cgpa" placeholder="2nd Sem CGPA" onChange={handleChange} required/>
-                <input type="number" step='0.01' name="sem3_cgpa" placeholder="3rd Sem CGPA" onChange={handleChange} required/>
-                <input type="number" step='0.01' name="sem4_cgpa" placeholder="4th Sem CGPA" onChange={handleChange} required/>
-                <input type="number" step='0.01' name="sem5_cgpa" placeholder="5th Sem CGPA" onChange={handleChange} />
-                <input type="number" step='0.01' name="sem6_cgpa" placeholder="6th Sem CGPA" onChange={handleChange} />
-                <input type="number" step='0.01' name="sem7_cgpa" placeholder="7th Sem CGPA" onChange={handleChange} />
-                <input type="number" step='0.01' name="sem8_cgpa" placeholder="8th Sem CGPA" onChange={handleChange} />
+                <input type="number" step="0.01" name="sem1_cgpa" placeholder="1st Sem CGPA" onChange={handleChange} required />
+                <input type="number" step="0.01" name="sem2_cgpa" placeholder="2nd Sem CGPA" onChange={handleChange} required />
+                <input type="number" step="0.01" name="sem3_cgpa" placeholder="3rd Sem CGPA" onChange={handleChange} required />
+                <input type="number" step="0.01" name="sem4_cgpa" placeholder="4th Sem CGPA" onChange={handleChange} required />
+                <input type="number" step="0.01" name="sem5_cgpa" placeholder="5th Sem CGPA" onChange={handleChange} />
+                <input type="number" step="0.01" name="sem6_cgpa" placeholder="6th Sem CGPA" onChange={handleChange} />
+                <input type="number" step="0.01" name="sem7_cgpa" placeholder="7th Sem CGPA" onChange={handleChange} />
+                <input type="number" step="0.01" name="sem8_cgpa" placeholder="8th Sem CGPA" onChange={handleChange} />
+                <input type="number" step="0.01" name="cgpaOverall" placeholder="Overall CGPA" onChange={handleChange} />
 
                 <label>History of Arrears:</label>
                 <select name="history_of_arrear" onChange={handleChange}>
@@ -123,6 +156,12 @@ const StudentProfile = () => {
                 <select name="passport" onChange={handleChange}>
                     <option value="No">No</option>
                     <option value="Yes">Yes</option>
+                </select>
+
+                <label>Placement Willing:</label>
+                <select name="placementWilling" onChange={handleChange}>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
                 </select>
 
                 <button type="submit">Save Profile</button>
