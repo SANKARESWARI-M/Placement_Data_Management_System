@@ -77,28 +77,56 @@ db.query(createIndexQuery("idx_year", "placed_data", "year"), (err) => {
 
 //-------------------------------------------------------------------------
 ///upcoming drives
-app.post("/api/upcoming-drives", upload.single('post'), (req, res) => {
-  const { company_name, eligibility, date, time, venue, role } = req.body; 
-  const salaryPackage = req.body.package; // Renamed 'package' to 'salaryPackage'
+// app.post("/api/upcoming-drives", upload.single('post'), (req, res) => {
+//   const { company_name, eligibility, date, time, venue, role } = req.body; 
+//   const salaryPackage = req.body.package; // Renamed 'package' to 'salaryPackage'
 
+//   const postFilePath = req.file ? req.file.filename : null;
+
+//   // Convert empty salaryPackage to NULL or a default value
+//   const packageValue = salaryPackage && !isNaN(salaryPackage) ? salaryPackage : null; 
+
+//   const query = `
+//     INSERT INTO upcomingdrives (post, company_name, eligibility, date, time, venue, roles, package)
+//     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+//   `;
+
+//   db.query(query, [postFilePath, company_name, eligibility, date, time, venue, role, packageValue], (err, result) => {
+//     if (err) {
+//       console.error(err);
+//       return res.status(500).json({ message: "Database error" });
+//     }
+//     res.status(201).json({ message: "Upcoming drive added successfully!" });
+//   });
+// });
+
+app.post("/api/upcoming-drives", upload.single('post'), (req, res) => {
+  const { company_name, eligibility, date, time, venue, role, salary } = req.body; // Ensure correct field names
+  
   const postFilePath = req.file ? req.file.filename : null;
 
-  // Convert empty salaryPackage to NULL or a default value
-  const packageValue = salaryPackage && !isNaN(salaryPackage) ? salaryPackage : null; 
+  // Convert empty salary value to NULL
+  const salaryValue = salary && !isNaN(salary) ? salary : null; 
+  const rolesValue = role && role.trim() !== "" ? role : "Not specified"; // ✅ Set default value if empty
+
 
   const query = `
-    INSERT INTO upcomingdrives (post, company_name, eligibility, date, time, venue, roles, package)
+    INSERT INTO upcomingdrives (post, company_name, eligibility, date, time, venue, package, roles)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  db.query(query, [postFilePath, company_name, eligibility, date, time, venue, role, packageValue], (err, result) => {
+  db.query(query, [postFilePath, company_name, eligibility, date, time, venue,  salaryValue,rolesValue], (err, result) => {
     if (err) {
-      console.error(err);
+      console.error("Database error:", err);
       return res.status(500).json({ message: "Database error" });
     }
     res.status(201).json({ message: "Upcoming drive added successfully!" });
   });
 });
+
+
+
+
 
 // Fetch the upcoming details
 app.get("/api/upcoming-drives", (req, res) => {
