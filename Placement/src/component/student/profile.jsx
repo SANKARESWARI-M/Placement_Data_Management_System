@@ -4,6 +4,7 @@ import Navbar from "./navbar";
 import '../../styles/StudentProfile.css';
 
 const StudentProfile = () => {
+    const [showForm, setShowForm] = useState(false); // Controls form visibility
     const [formData, setFormData] = useState({
         regno: "",
         name: "",
@@ -93,6 +94,15 @@ const StudentProfile = () => {
         <Navbar/>
           <div className="profile-container">
             <h2>Student Profile</h2>
+            {/* Create Profile Button */}
+            {!showForm && (
+                    <button onClick={() => setShowForm(true)} className="create-profile-btn">
+                        Create Profile
+                    </button>
+                )}
+
+            {/* Profile Form - Visible only when showForm is true */}
+            {showForm && (
             <form onSubmit={handleSubmit}>
             <input type="text" name="regno" placeholder="Register Number" onChange={handleChange} required />
                 <input type="text" name="name" placeholder="Name" onChange={handleChange} required />
@@ -166,6 +176,7 @@ const StudentProfile = () => {
 
                 <button type="submit">Save Profile</button>
             </form>
+            )}
         </div>
         </>
     );
