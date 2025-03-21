@@ -274,7 +274,7 @@ app.post("/add-company", upload.single("logo"), async (req, res) => {
 
 
 // API to get total recruiters count
-app.get("/api/recruiters/count", (req, res) => {
+app.get("/api/recruiterscount", (req, res) => {
   const query = "SELECT COUNT(*) AS total FROM companies";
   db.query(query, (err, results) => {
     if (err) {
