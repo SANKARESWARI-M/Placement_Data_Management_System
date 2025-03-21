@@ -474,40 +474,51 @@ app.get("/api/student-upcoming-drives", (req, res) => {
 
 
 
+
+
+
 const formatValue = (value) => (value === "" ? null : value);
 app.post("/api/student-profile", (req, res) => {
   try {
     const {
-      regno, name, batch, hsc_percentage, sslc_percentage,
+      regno, name, batch,degree,dept,gender,dob, hsc_percentage,hsccutoff,hscSchoolName, hscBoard,hscYear, sslc_percentage,sslcYear, sslcSchoolName, sslcBoard,
       sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa,
-      sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear,
+      sem6_cgpa, sem7_cgpa, sem8_cgpa,cgpaOverall, history_of_arrear, standing_arrear,placementWilling,
       address, student_mobile, secondary_mobile, college_email, personal_email,
       aadhar_number, pancard_number, passport
     } = req.body;
 
     const query = `
       INSERT INTO student_details (
-        regno, name, batch, hsc_percentage, sslc_percentage, 
+        regno, name, batch,degree, dept, gender, dob, hsc_percentage,hsccutoff, hscSchoolName, hscBoard,hscYear, sslc_percentage,sslcYear, sslcSchoolName, sslcBoard, 
         sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa, 
-        sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear, 
+        sem6_cgpa, sem7_cgpa, sem8_cgpa,cgpaOverall, history_of_arrear, standing_arrear, placementWilling,
         address, student_mobile, secondary_mobile, college_email, personal_email, 
         aadhar_number, pancard_number, passport
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?)
       ON DUPLICATE KEY UPDATE 
-        name=VALUES(name), batch=VALUES(batch), hsc_percentage=VALUES(hsc_percentage),
-        sslc_percentage=VALUES(sslc_percentage), sem1_cgpa=VALUES(sem1_cgpa), sem2_cgpa=VALUES(sem2_cgpa), 
-        sem3_cgpa=VALUES(sem3_cgpa), sem4_cgpa=VALUES(sem4_cgpa), sem5_cgpa=VALUES(sem5_cgpa),
-        sem6_cgpa=VALUES(sem6_cgpa), sem7_cgpa=VALUES(sem7_cgpa), sem8_cgpa=VALUES(sem8_cgpa), 
-        history_of_arrear=VALUES(history_of_arrear), standing_arrear=VALUES(standing_arrear),
-        address=VALUES(address), student_mobile=VALUES(student_mobile), secondary_mobile=VALUES(secondary_mobile),
+        name=VALUES(name), batch=VALUES(batch), degree=VALUES(degree), dept=VALUES(dept),
+        gender=VALUES(gender), dob=VALUES(dob), hsc_percentage=VALUES(hsc_percentage), 
+        hsccutoff=VALUES(hsccutoff), hscSchoolName=VALUES(hscSchoolName), hscBoard=VALUES(hscBoard),hscYear=VALUES(hscYear),
+        sslc_percentage=VALUES(sslc_percentage), sslcYear=VALUES(sslcYear),
+        sslcSchoolName=VALUES(sslcSchoolName), sslcBoard=VALUES(sslcBoard),
+        sem1_cgpa=VALUES(sem1_cgpa), sem2_cgpa=VALUES(sem2_cgpa), sem3_cgpa=VALUES(sem3_cgpa), 
+        sem4_cgpa=VALUES(sem4_cgpa), sem5_cgpa=VALUES(sem5_cgpa), sem6_cgpa=VALUES(sem6_cgpa), 
+        sem7_cgpa=VALUES(sem7_cgpa), sem8_cgpa=VALUES(sem8_cgpa), cgpaOverall=VALUES(cgpaOverall),
+        history_of_arrear=VALUES(history_of_arrear), standing_arrear=VALUES(standing_arrear), 
+        placementWilling=VALUES(placementWilling), address=VALUES(address),
+        student_mobile=VALUES(student_mobile), secondary_mobile=VALUES(secondary_mobile),
         college_email=VALUES(college_email), personal_email=VALUES(personal_email),
         aadhar_number=VALUES(aadhar_number), pancard_number=VALUES(pancard_number), passport=VALUES(passport)
     `;
 
     const values = [
-      regno, name, batch, hsc_percentage, sslc_percentage,
+      regno, name, batch, degree, dept, gender, dob,
+      hsc_percentage, hsccutoff, hscSchoolName, hscBoard,hscYear,
+      sslc_percentage, sslcYear, sslcSchoolName, sslcBoard,
       formatValue(sem1_cgpa), formatValue(sem2_cgpa), formatValue(sem3_cgpa), formatValue(sem4_cgpa), formatValue(sem5_cgpa),
-      formatValue(sem6_cgpa), formatValue(sem7_cgpa), formatValue(sem8_cgpa), history_of_arrear, standing_arrear,
+      formatValue(sem6_cgpa), formatValue(sem7_cgpa), formatValue(sem8_cgpa), formatValue(cgpaOverall),
+      history_of_arrear, standing_arrear, placementWilling,
       address, student_mobile, secondary_mobile, college_email, personal_email,
       aadhar_number, pancard_number, passport
     ];
@@ -525,6 +536,67 @@ app.post("/api/student-profile", (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
+
+
+
+
+
+
+
+
+// const formatValue = (value) => (value === "" ? null : value);
+// app.post("/api/student-profile", (req, res) => {
+//   try {
+//     const {
+//       regno, name, batch, hsc_percentage, sslc_percentage,
+//       sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa,
+//       sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear,
+//       address, student_mobile, secondary_mobile, college_email, personal_email,
+//       aadhar_number, pancard_number, passport
+//     } = req.body;
+
+//     const query = `
+//       INSERT INTO student_details (
+//         regno, name, batch, hsc_percentage, sslc_percentage, 
+//         sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa, 
+//         sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear, 
+//         address, student_mobile, secondary_mobile, college_email, personal_email, 
+//         aadhar_number, pancard_number, passport
+//       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//       ON DUPLICATE KEY UPDATE 
+//         name=VALUES(name), batch=VALUES(batch), hsc_percentage=VALUES(hsc_percentage),
+//         sslc_percentage=VALUES(sslc_percentage), sem1_cgpa=VALUES(sem1_cgpa), sem2_cgpa=VALUES(sem2_cgpa), 
+//         sem3_cgpa=VALUES(sem3_cgpa), sem4_cgpa=VALUES(sem4_cgpa), sem5_cgpa=VALUES(sem5_cgpa),
+//         sem6_cgpa=VALUES(sem6_cgpa), sem7_cgpa=VALUES(sem7_cgpa), sem8_cgpa=VALUES(sem8_cgpa), 
+//         history_of_arrear=VALUES(history_of_arrear), standing_arrear=VALUES(standing_arrear),
+//         address=VALUES(address), student_mobile=VALUES(student_mobile), secondary_mobile=VALUES(secondary_mobile),
+//         college_email=VALUES(college_email), personal_email=VALUES(personal_email),
+//         aadhar_number=VALUES(aadhar_number), pancard_number=VALUES(pancard_number), passport=VALUES(passport)
+//     `;
+
+//     const values = [
+//       regno, name, batch, hsc_percentage, sslc_percentage,
+//       formatValue(sem1_cgpa), formatValue(sem2_cgpa), formatValue(sem3_cgpa), formatValue(sem4_cgpa), formatValue(sem5_cgpa),
+//       formatValue(sem6_cgpa), formatValue(sem7_cgpa), formatValue(sem8_cgpa), history_of_arrear, standing_arrear,
+//       address, student_mobile, secondary_mobile, college_email, personal_email,
+//       aadhar_number, pancard_number, passport
+//     ];
+
+//     db.query(query, values, (err, result) => {
+//       if (err) {
+//         console.error("Error inserting/updating student profile:", err);
+//         return res.status(500).json({ error: "Database error" });
+//       }
+//       res.json({ message: "Profile saved successfully!" });
+//     });
+
+//   } catch (error) {
+//     console.error("Server error:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
 
 
 app.post("/api/register-drive", (req, res) => {
