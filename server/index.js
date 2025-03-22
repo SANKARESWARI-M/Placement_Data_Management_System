@@ -656,6 +656,30 @@ app.post("/api/send-emails", async (req, res) => {
 
 
 
+//staff page
+app.get("/api/students", (req, res) => {
+  const { startRegNo, endRegNo } = req.query;
+
+  let query = "SELECT * FROM student_details";
+  let values = [];
+
+  if (startRegNo && endRegNo) {
+      query += " WHERE regno BETWEEN ? AND ?";
+      values.push(startRegNo, endRegNo);
+  }
+
+  db.query(query, values, (err, results) => {
+      if (err) {
+          console.error("Error fetching student details:", err);
+          return res.status(500).json({ error: "Internal Server Error" });
+      }
+      res.json(results);
+  });
+});
+
+
+
+
 
 
 
