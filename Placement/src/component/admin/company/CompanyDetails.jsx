@@ -52,9 +52,10 @@ const CompanyDetails = () => {
   }
 
   // ✅ Prevent errors by setting default values
-  const roles = company.roles || [];
-  const skillSets = company.skillSets || [];
-  const localBranches = company.localBranches || [];
+  const skillSets = Array.isArray(company.skillSets) ? company.skillSets : [];
+  const roles = Array.isArray(company.roles) ? company.roles : [];
+const localBranches = Array.isArray(company.localBranches) ? company.localBranches : [];
+
 
   const [chartData, setChartData] = useState({
     labels: [],
