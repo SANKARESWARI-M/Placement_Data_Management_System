@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "../../styles/adminStudentsregistered.css";
 import { saveAs } from "file-saver";
-import Navbar from './AdminNavbar'
+import Navbar from './AdminNavbar';
+import * as XLSX from "xlsx";
+
 
 const AdminRegisteredStudents = () => {
   const [registeredStudents, setRegisteredStudents] = useState([]);
@@ -10,6 +12,7 @@ const AdminRegisteredStudents = () => {
   const [selectedStudents, setSelectedStudents] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [placementData, setPlacementData] = useState({}); 
+  const [file, setFile] = useState(null);
 
   useEffect(() => {
     fetchRegisteredStudents();
@@ -150,6 +153,37 @@ const AdminRegisteredStudents = () => {
       alert("Failed to delete unselected students.");
     }
   };
+
+  const handleFileChange = (event) => {
+    setFile(event.target.files[0]);
+  };
+
+  // Process and upload the Excel file
+  const handleFileUpload = async () => {
+    if (!file) {
+      alert("Please select an Excel file before uploading.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+      try {
+        await axios.post("http://localhost:5000/api/import-placed-students", { students: jsonData });
+        alert("Placed students imported successfully!");
+        fetchRegisteredStudents(); // Refresh data
+      } catch (error) {
+        console.error("Error importing placement data:", error);
+        alert("Failed to import placement data.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
   
   
 
@@ -185,6 +219,8 @@ const AdminRegisteredStudents = () => {
           <button className="generate-report-btn" onClick={generateReport}>Generate Report</button>
           <button className="sendmail-btn" onClick={sendEmails}>Send Emails</button> 
           <button className="delete-btn" onClick={handleDeleteUnselectedStudents}>Delete</button>
+          <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} />
+          <button className="upload-btn" onClick={handleFileUpload}>Upload Excel</button>
         </div>
 
         <table className="display-register-students">

@@ -574,10 +574,6 @@ app.get('/api/registered-drives/:regno', async (req, res) => {
   }
 });
 
-
-
-
-
 //delete unselected students
 app.delete("/api/delete-unselected-students", (req, res) => {
   const selectedRegnos = req.body.selectedRegnos; // Array of selected students' regnos
@@ -677,13 +673,55 @@ app.get("/api/students", (req, res) => {
   });
 });
 
+//import file update in placed students
+app.post("/api/import-placed-students", async (req, res) => {
+  try {
+      const students = req.body.students;
 
+      if (!students || students.length === 0) {
+          return res.status(400).json({ error: "No students data provided" });
+      }
 
+      const query = "INSERT INTO placed_student (regno, name, company_name, role, package, year) VALUES (?, ?, ?, ?, ?, ?)";
 
-
-
-
-
+      await Promise.all(
+        students.map(async (student, index) => {
+          try {
+            console.log(`Processing Student ${index + 1}:`, student);
+  
+            // Ensure values are correctly extracted and cleaned
+            const regno = student["Reg No"]?.toString().trim() || null;
+            const name = student["Name"]?.trim() || null;
+            const company_name = student["Company Name"]?.trim() || null;
+            const role = student["role"]?.trim() || null;
+            let salarypackage = parseFloat(
+              student["package"]?.toString().replace(/[^\d.]/g, "")
+            );
+            if (isNaN(salarypackage)) salarypackage = 0.00; // Default if invalid
+            const year = Number(student["year"]) || null;
+  
+            // Validate required fields
+            if (!regno || !name || !company_name || !role || !salarypackage || !year) {
+              console.warn(`⚠️ Skipping student due to missing values:`, student);
+              return;
+            }
+  
+            // Insert data into `placed_student` table
+            await db.execute(query, [regno, name, company_name, role, salarypackage, year]);
+            console.log(`✅ Inserted Successfully: ${name} (${regno})`);
+          } catch (error) {
+            console.error(`❌ Error inserting student ${index + 1}:`, error);
+          }
+        })
+      );
+  
+      // db.release(); // Release the connection back to the pool
+      res.status(200).json({ message: "Students imported successfully!" });
+    } catch (error) {
+      console.error("❌ Server Error:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
@@ -695,3 +733,5 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
+
+

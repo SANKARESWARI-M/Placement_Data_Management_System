@@ -220,7 +220,7 @@ const localBranches = Array.isArray(company.localBranches) ? company.localBranch
                   <td>{student.name}</td>
                   <td>{student.regno}</td>
                   <td>{student.role}</td>
-                  <td>₹{student.package} LPA</td>
+                  <td>{student.package} LPA</td>
                 </tr>
               ))}
             </tbody>
