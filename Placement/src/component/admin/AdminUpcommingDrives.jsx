@@ -12,7 +12,7 @@ const UpcomingDrives = () => {
         date: '',
         time: '',
         venue: '',
-        roles: '',
+        role: '',
         salary: '',
     });
     const [postFile, setPostFile] = useState(null);
@@ -138,7 +138,7 @@ const UpcomingDrives = () => {
                 <p><strong>Time:</strong> {drive.time}</p>
                 <p><strong>Venue:</strong> {drive.venue}</p>
                 <p><strong>Package:</strong> {drive.salary}</p>
-                <p><strong>Role:</strong> {drive.roles}</p> {/* ✅ FIX: Ensure roles are displayed */}
+                <p><strong>Role:</strong> {drive.role}</p> {/* ✅ FIX: Ensure roles are displayed */}
                 <button className="delete-btn" onClick={() => handleDeleteDrive(drive.id)}>Delete</button>
             </div>
         ))

@@ -42,7 +42,7 @@ const upload = multer({ storage, fileFilter });
 const db = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "Ramya@123",
+  password: "Nandhini#1729",
   database: "placement",
   waitForConnections: true,
   connectionLimit: 10,
@@ -63,16 +63,16 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 
 // Ensure Indexes Exist (Workaround for IF NOT EXISTS)
-const createIndexQuery = (indexName, tableName, columnName) => {
-  return `CREATE INDEX ${indexName} ON ${tableName} (${columnName})`;
-};
+// const createIndexQuery = (indexName, tableName, columnName) => {
+//   return `CREATE INDEX ${indexName} ON ${tableName} (${columnName})`;
+// };
 
-db.query(createIndexQuery("idx_companyName", "companies", "companyName"), (err) => {
-  if (err && err.code !== 'ER_DUP_KEYNAME') console.error("Error creating index:", err);
-});
-db.query(createIndexQuery("idx_year", "placed_data", "year"), (err) => {
-  if (err && err.code !== 'ER_DUP_KEYNAME') console.error("Error creating index:", err);
-});
+// db.query(createIndexQuery("idx_companyName", "companies", "companyName"), (err) => {
+//   if (err && err.code !== 'ER_DUP_KEYNAME') console.error("Error creating index:", err);
+// });
+// db.query(createIndexQuery("idx_year", "placed_data", "year"), (err) => {
+//   if (err && err.code !== 'ER_DUP_KEYNAME') console.error("Error creating index:", err);
+// });
 
 
 //-------------------------------------------------------------------------
@@ -101,18 +101,18 @@ db.query(createIndexQuery("idx_year", "placed_data", "year"), (err) => {
 // });
 
 app.post("/api/upcoming-drives", upload.single('post'), (req, res) => {
-  const { company_name, eligibility, date, time, venue, roles, salary } = req.body; 
+  const { company_name, eligibility, date, time, venue, role, salary } = req.body; 
 
   const postFilePath = req.file ? req.file.filename : null;
   
   // ✅ Ensure salary is stored as a string, not null
   const salaryValue = salary ? salary.toString().trim() : "Not specified"; 
-  const rolesValue = roles && roles.trim() !== "" ? roles : "Not specified";
+  const rolesValue = role && role.trim() !== "" ? roles : "Not specified";
 
   console.log("Received Data:", { company_name, eligibility, date, time, venue, rolesValue, salaryValue });
 
   const query = `
-      INSERT INTO upcomingdrives (post, company_name, eligibility, date, time, venue, roles, salary)
+      INSERT INTO upcomingdrives (post, company_name, eligibility, date, time, venue, role, salary)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
