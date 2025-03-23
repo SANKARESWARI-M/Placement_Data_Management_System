@@ -274,7 +274,7 @@ app.post("/add-company", upload.single("logo"), async (req, res) => {
 
 
 // API to get total recruiters count
-app.get("/api/recruiters/count", (req, res) => {
+app.get("/api/recruiterscount", (req, res) => {
   const query = "SELECT COUNT(*) AS total FROM companies";
   db.query(query, (err, results) => {
     if (err) {
@@ -653,6 +653,30 @@ app.post("/api/send-emails", async (req, res) => {
       res.status(500).json({ error: "Failed to send emails" });
   }
 });
+
+
+
+//staff page
+app.get("/api/students", (req, res) => {
+  const { startRegNo, endRegNo } = req.query;
+
+  let query = "SELECT * FROM student_details";
+  let values = [];
+
+  if (startRegNo && endRegNo) {
+      query += " WHERE regno BETWEEN ? AND ?";
+      values.push(startRegNo, endRegNo);
+  }
+
+  db.query(query, values, (err, results) => {
+      if (err) {
+          console.error("Error fetching student details:", err);
+          return res.status(500).json({ error: "Internal Server Error" });
+      }
+      res.json(results);
+  });
+});
+
 
 
 
