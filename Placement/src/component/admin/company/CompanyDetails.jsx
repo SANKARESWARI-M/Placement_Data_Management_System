@@ -53,7 +53,7 @@ const CompanyDetails = () => {
 
   // ✅ Prevent errors by setting default values
   const skillSets = company.skillSets ? JSON.parse(company.skillSets) : [];
-const roles = company.roles ? JSON.parse(company.roles) : [];
+  const roles = company.roles ? JSON.parse(company.roles) : [];
 const localBranches = company.localBranches ? JSON.parse(company.localBranches) : [];
 
 
