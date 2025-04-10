@@ -272,6 +272,80 @@ app.post("/add-company", upload.single("logo"), async (req, res) => {
 });
 
 
+// update the company details
+app.put('/company/:companyName', (req, res) => {
+  const companyName = req.params.companyName;
+  const {
+    description,
+    objective,
+    ceo,
+    location,
+    skillSets,
+    localBranches,
+    roles,
+    package: companyPackage
+  } = req.body;
+
+  const query = `
+    UPDATE companies
+    SET description = ?, 
+        objective = ?, 
+        ceo = ?, 
+        location = ?, 
+        skillSets = ?, 
+        localBranches = ?, 
+        roles = ?, 
+        package = ?
+    WHERE companyName = ?
+  `;
+
+  const values = [
+    description,
+    objective,
+    ceo,
+    location,
+    JSON.stringify(skillSets),
+    JSON.stringify(localBranches),
+    JSON.stringify(roles),
+    companyPackage,
+    companyName
+  ];
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      console.error("Error updating company:", err);
+      res.status(500).json({ message: "Update failed" });
+    } else {
+      res.json({ message: "Company updated successfully" });
+    }
+  });
+});
+
+
+// API to delete a company by companyName
+// DELETE company by companyId
+app.delete("/delete-company/:companyId", (req, res) => {
+  const companyId = req.params.companyId;
+  const query = "DELETE FROM companies WHERE id = ?"; // assuming your column is named `id`
+
+  db.query(query, [companyId], (err, result) => {
+    if (err) {
+      console.error("Error deleting company:", err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    res.json({ message: "Company deleted successfully" });
+  });
+});
+
+
+
+
+
 
 // API to get total recruiters count
 app.get("/api/recruiterscount", (req, res) => {
@@ -329,7 +403,7 @@ app.get("/placed-student", (req, res) => {
 // fetch the details for front page
 app.get("/stats", (req, res) => {
   const query = `
-    SELECT COUNT(*) AS total_students, AVG(package) AS avg_salary FROM placed_student;
+    SELECT COUNT(*) AS total_students, AVG(package) AS avg_salary, MAX(package) AS highest_salary FROM placed_student;
   `;
   db.query(query, (err, result) => {
     if (err) {
@@ -475,70 +549,6 @@ app.get("/api/student-upcoming-drives", (req, res) => {
 
 
 
-
-
-// const formatValue = (value) => (value === "" ? null : value);
-// app.post("/api/student-profile", (req, res) => {
-//   try {
-//     const {
-//       regno, name, batch,degree,dept,gender,dob, hsc_percentage,hsccutoff,hscSchoolName, hscBoard,hscYear, sslc_percentage,sslcYear, sslcSchoolName, sslcBoard,
-//       sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa,
-//       sem6_cgpa, sem7_cgpa, sem8_cgpa,cgpaOverall, history_of_arrear, standing_arrear,placementWilling,
-//       address, student_mobile, secondary_mobile, college_email, personal_email,
-//       aadhar_number, pancard_number, passport
-//     } = req.body;
-
-//     const query = `
-    //   INSERT INTO student_details (
-    //     regno, name, batch,degree, dept, gender, dob, hsc_percentage,hsccutoff, hscSchoolName, hscBoard,hscYear, sslc_percentage,sslcYear, sslcSchoolName, sslcBoard, 
-    //     sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa, 
-    //     sem6_cgpa, sem7_cgpa, sem8_cgpa,cgpaOverall, history_of_arrear, standing_arrear, placementWilling,
-    //     address, student_mobile, secondary_mobile, college_email, personal_email, 
-    //     aadhar_number, pancard_number, passport
-    //   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?)
-    //   ON DUPLICATE KEY UPDATE 
-    //     name=VALUES(name), batch=VALUES(batch), degree=VALUES(degree), dept=VALUES(dept),
-    //     gender=VALUES(gender), dob=VALUES(dob), hsc_percentage=VALUES(hsc_percentage), 
-    //     hsccutoff=VALUES(hsccutoff), hscSchoolName=VALUES(hscSchoolName), hscBoard=VALUES(hscBoard),hscYear=VALUES(hscYear),
-    //     sslc_percentage=VALUES(sslc_percentage), sslcYear=VALUES(sslcYear),
-    //     sslcSchoolName=VALUES(sslcSchoolName), sslcBoard=VALUES(sslcBoard),
-    //     sem1_cgpa=VALUES(sem1_cgpa), sem2_cgpa=VALUES(sem2_cgpa), sem3_cgpa=VALUES(sem3_cgpa), 
-    //     sem4_cgpa=VALUES(sem4_cgpa), sem5_cgpa=VALUES(sem5_cgpa), sem6_cgpa=VALUES(sem6_cgpa), 
-    //     sem7_cgpa=VALUES(sem7_cgpa), sem8_cgpa=VALUES(sem8_cgpa), cgpaOverall=VALUES(cgpaOverall),
-    //     history_of_arrear=VALUES(history_of_arrear), standing_arrear=VALUES(standing_arrear), 
-    //     placementWilling=VALUES(placementWilling), address=VALUES(address),
-    //     student_mobile=VALUES(student_mobile), secondary_mobile=VALUES(secondary_mobile),
-    //     college_email=VALUES(college_email), personal_email=VALUES(personal_email),
-    //     aadhar_number=VALUES(aadhar_number), pancard_number=VALUES(pancard_number), passport=VALUES(passport)
-    // `;
-
-//     const values = [
-//       regno, name, batch, degree, dept, gender, dob,
-//       hsc_percentage, hsccutoff, hscSchoolName, hscBoard,hscYear,
-//       sslc_percentage, sslcYear, sslcSchoolName, sslcBoard,
-//       formatValue(sem1_cgpa), formatValue(sem2_cgpa), formatValue(sem3_cgpa), formatValue(sem4_cgpa), formatValue(sem5_cgpa),
-//       formatValue(sem6_cgpa), formatValue(sem7_cgpa), formatValue(sem8_cgpa), formatValue(cgpaOverall),
-//       history_of_arrear, standing_arrear, placementWilling,
-//       address, student_mobile, secondary_mobile, college_email, personal_email,
-//       aadhar_number, pancard_number, passport
-//     ];
-
-//     db.query(query, values, (err, result) => {
-//       if (err) {
-//         console.error("Error inserting/updating student profile:", err);
-//         return res.status(500).json({ error: "Database error" });
-//       }
-//       res.json({ message: "Profile saved successfully!" });
-//     });
-
-//   } catch (error) {
-//     console.error("Server error:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
-
-
 const formatValue = (value) => (value === "" ? null : value);
 
 // 🔹 Save or Update Student Profile (Already Given)
@@ -601,6 +611,8 @@ app.post("/api/student-profile", (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
 
 // 🔹 **Fetch Student Profile API (NEW)**
 app.get("/api/student-profile/:regno", (req, res) => {
@@ -836,7 +848,102 @@ app.get("/api/students", (req, res) => {
 });
 
 
+//hackathon
+app.post('/api/hackathons', (req, res) => {
+  const { content, link } = req.body;
 
+  if (!content) {
+      return res.status(400).json({ error: "Hackathon details cannot be empty" });
+  }
+
+  const sql = "INSERT INTO hackathons (content, link) VALUES (?, ?)";
+  db.query(sql, [content, link], (err, result) => {
+      if (err) {
+          return res.status(500).json({ error: err.message });
+      }
+      res.json({ message: "Hackathon added successfully!", id: result.insertId });
+  });
+});
+
+// Endpoint to fetch hackathons
+app.get('/api/hackathons', (req, res) => {
+  const sql = "SELECT * FROM hackathons ORDER BY created_at DESC";
+  db.query(sql, (err, results) => {
+      if (err) {
+          return res.status(500).json({ error: err.message });
+      }
+      res.json(results);
+  });
+});
+
+// Delete a hackathon
+app.delete('/api/hackathons/:id', (req, res) => {
+  const { id } = req.params;
+
+  const sql = "DELETE FROM hackathons WHERE id = ?";
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error("Error deleting hackathon:", err);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Hackathon not found" });
+    }
+
+    res.json({ message: "Hackathon deleted successfully!" });
+  });
+});
+
+//import file update in placed students
+app.post("/api/import-placed-students", async (req, res) => {
+  try {
+      const students = req.body.students;
+
+      if (!students || students.length === 0) {
+          return res.status(400).json({ error: "No students data provided" });
+      }
+
+      const query = "INSERT INTO placed_student (regno, name, company_name, role, package, year) VALUES (?, ?, ?, ?, ?, ?)";
+
+      await Promise.all(
+        students.map(async (student, index) => {
+          try {
+            console.log(`Processing Student ${index + 1}:, student`);
+  
+            // Ensure values are correctly extracted and cleaned
+            const regno = student["Reg No"]?.toString().trim() || null;
+            const name = student["Name"]?.trim() || null;
+            const company_name = student["Company Name"]?.trim() || null;
+            const role = student["role"]?.trim() || null;
+            let salarypackage = parseFloat(
+              student["package"]?.toString().replace(/[^\d.]/g, "")
+            );
+            if (isNaN(salarypackage)) salarypackage = 0.00; // Default if invalid
+            const year = Number(student["year"]) || null;
+  
+            // Validate required fields
+            if (!regno || !name || !company_name || !role || !salarypackage || !year) {
+              console.warn(`⚠ Skipping student due to missing values:, student`);
+              return;
+            }
+  
+            // Insert data into placed_student table
+            await db.execute(query, [regno, name, company_name, role, salarypackage, year]);
+            console.log(`✅ Inserted Successfully: ${name} (${regno})`);
+          } catch (error) {
+            console.error(`❌ Error inserting student ${index + 1}:, error`);
+          }
+        })
+      );
+  
+      // db.release(); // Release the connection back to the pool
+      res.status(200).json({message: "Students imported successfully!" });
+    } catch (error) {
+      console.error("❌ Server Error:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
 
 
 
