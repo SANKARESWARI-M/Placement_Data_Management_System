@@ -18,13 +18,13 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = 5000;
 
-// Enable CORS
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Multer setup for file uploads
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
@@ -39,6 +39,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter });
 
 // MySQL Connection (Use Pool for better handling)
+
 const db = mysql.createPool({
   host: "localhost",
   user: "root",
@@ -76,36 +77,13 @@ db.query(createIndexQuery("idx_year", "placed_data", "year"), (err) => {
 
 
 //-------------------------------------------------------------------------
-///upcoming drives
-// app.post("/api/upcoming-drives", upload.single('post'), (req, res) => {
-//   const { company_name, eligibility, date, time, venue, role } = req.body; 
-//   const salaryPackage = req.body.package; // Renamed 'package' to 'salaryPackage'
 
-//   const postFilePath = req.file ? req.file.filename : null;
-
-//   // Convert empty salaryPackage to NULL or a default value
-//   const packageValue = salaryPackage && !isNaN(salaryPackage) ? salaryPackage : null; 
-
-//   const query = `
-//     INSERT INTO upcomingdrives (post, company_name, eligibility, date, time, venue, roles, package)
-//     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-//   `;
-
-//   db.query(query, [postFilePath, company_name, eligibility, date, time, venue, role, packageValue], (err, result) => {
-//     if (err) {
-//       console.error(err);
-//       return res.status(500).json({ message: "Database error" });
-//     }
-//     res.status(201).json({ message: "Upcoming drive added successfully!" });
-//   });
-// });
 
 app.post("/api/upcoming-drives", upload.single('post'), (req, res) => {
   const { company_name, eligibility, date, time, venue, roles, salary } = req.body; 
 
   const postFilePath = req.file ? req.file.filename : null;
-  
-  // ✅ Ensure salary is stored as a string, not null
+
   const salaryValue = salary ? salary.toString().trim() : "Not specified"; 
   const rolesValue = roles && roles.trim() !== "" ? roles : "Not specified";
 
@@ -121,8 +99,21 @@ app.post("/api/upcoming-drives", upload.single('post'), (req, res) => {
           console.error("Database error:", err);
           return res.status(500).json({ message: "Database error" });
       }
+
+      //  notification message
+    const notificationMsg = `📢 New Drive Alert! ${company_name} is hiring for ${rolesValue} on ${date} at ${time} in ${venue}. Package: ${salaryValue}`;
+
+    const notifQuery = `INSERT INTO notifications (message) VALUES (?)`;
+    db.query(notifQuery, [notificationMsg], (notifErr, notifResult) => {
+      if (notifErr) {
+        console.error("Notification insert error:", notifErr);
+        return res.status(500).json({ message: "Drive added, but notification failed." });
+      }
+
+
       res.status(201).json({ message: "Upcoming drive added successfully!" });
   });
+});
 });
 
 
@@ -222,13 +213,12 @@ app.get("/companies", (req, res) => {
 app.post("/add-company", upload.single("logo"), async (req, res) => {
   try {
       const { companyName, description, ceo, location, objective } = req.body;
-      const salaryPackage = req.body.package; // Renamed 'package' to 'salaryPackage'
+      const salaryPackage = req.body.package; 
       let { skillSets, localBranches, roles } = req.body;
 
-      console.log("Received Data:", req.body); // ✅ Debugging Request Data
-      console.log("Uploaded File:", req.file); // ✅ Debugging File Upload
+      console.log("Received Data:", req.body); 
+      console.log("Uploaded File:", req.file); 
 
-      // ✅ Fix: Parse JSON fields correctly
       try {
           skillSets = skillSets ? JSON.parse(skillSets) : [];
           localBranches = localBranches ? JSON.parse(localBranches) : [];
@@ -238,22 +228,19 @@ app.post("/add-company", upload.single("logo"), async (req, res) => {
           return res.status(400).json({ message: "Invalid JSON format in skillSets, localBranches, or roles." });
       }
 
-      // ✅ Ensure all fields are provided
+
       if (!companyName || !description || !ceo || !location || !salaryPackage || !objective ||
           skillSets.length === 0 || localBranches.length === 0 || roles.length === 0) {
           return res.status(400).json({ message: "All fields are required." });
       }
 
-      // ✅ Check if a logo was uploaded
       const logo = req.file ? req.file.filename : null;
 
-      // ✅ Log final data before inserting into MySQL
       console.log("Final Data for MySQL:", {
           companyName, description, ceo, location, salaryPackage, objective,
           skillSets, localBranches, roles, logo
       });
 
-      // ✅ Fix: Insert into MySQL database
       const sql = `INSERT INTO companies
                    (companyName, description, ceo, location, package, objective, skillSets, localBranches, roles, logo)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -345,8 +332,6 @@ app.delete("/delete-company/:companyId", (req, res) => {
 
 
 
-
-
 // API to get total recruiters count
 app.get("/api/recruiterscount", (req, res) => {
   const query = "SELECT COUNT(*) AS total FROM companies";
@@ -358,8 +343,6 @@ app.get("/api/recruiterscount", (req, res) => {
     res.json({ total: results[0].total });
   });
 });
-
-
 
 
 
@@ -425,11 +408,11 @@ app.get("/placed-student-companies", (req, res) => {
 
     if (!result || result.length === 0) {
       console.warn("No companies found in placed_student table.");
-      return res.json([]); // ✅ Return an empty array instead of an object
+      return res.json([]); 
     }
 
     console.log("Companies API Response from placed_student:", result);
-    res.json(result); // ✅ Return a direct array (Correct)
+    res.json(result); 
   });
 });
 
@@ -465,6 +448,7 @@ app.get("/students-per-year", (req, res) => {
 });
 
 // API to get student details for a selected year and company
+
 app.get("/students-details", (req, res) => {
   const { company, year } = req.query;
   db.query(
@@ -477,18 +461,7 @@ app.get("/students-details", (req, res) => {
   );
 })
 
-app.get("/placed-students", (req, res) => {
-  db.query(
-    "SELECT name, regno, company_name, role, package, year FROM placed_student",
-    (err, result) => {
-      if (err) {
-        console.error("Error fetching placed students:", err);
-        return res.status(500).json({ error: err.message });
-      }
-      res.json(result);
-    }
-  );
-});
+
 
 app.get("/placed-students", (req, res) => {
   const { company } = req.query;
@@ -549,61 +522,46 @@ app.get("/api/student-upcoming-drives", (req, res) => {
 
 
 
-const formatValue = (value) => (value === "" ? null : value);
 
-// 🔹 Save or Update Student Profile (Already Given)
+
+
+
+
+//student-profile
 app.post("/api/student-profile", (req, res) => {
   try {
     const {
-      regno, name, batch, degree, dept, gender, dob, hsc_percentage, hsccutoff, hscSchoolName, hscBoard, hscYear,
-      sslc_percentage, sslcYear, sslcSchoolName, sslcBoard,
+      regno, name, batch, hsc_percentage, sslc_percentage,
       sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa,
-      sem6_cgpa, sem7_cgpa, sem8_cgpa, cgpaOverall, history_of_arrear, standing_arrear, placementWilling,
+      sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear,
       address, student_mobile, secondary_mobile, college_email, personal_email,
       aadhar_number, pancard_number, passport
     } = req.body;
 
     const query = `
       INSERT INTO student_details (
-        regno, name, batch,degree, dept, gender, dob, hsc_percentage,hsccutoff, hscSchoolName, hscBoard,hscYear, sslc_percentage,sslcYear, sslcSchoolName, sslcBoard, 
+        regno, name, batch, hsc_percentage, sslc_percentage, 
         sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa, 
-        sem6_cgpa, sem7_cgpa, sem8_cgpa,cgpaOverall, history_of_arrear, standing_arrear, placementWilling,
+        sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear, 
         address, student_mobile, secondary_mobile, college_email, personal_email, 
         aadhar_number, pancard_number, passport
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?)
-      ON DUPLICATE KEY UPDATE 
-        name=VALUES(name), batch=VALUES(batch), degree=VALUES(degree), dept=VALUES(dept),
-        gender=VALUES(gender), dob=VALUES(dob), hsc_percentage=VALUES(hsc_percentage), 
-        hsccutoff=VALUES(hsccutoff), hscSchoolName=VALUES(hscSchoolName), hscBoard=VALUES(hscBoard),hscYear=VALUES(hscYear),
-        sslc_percentage=VALUES(sslc_percentage), sslcYear=VALUES(sslcYear),
-        sslcSchoolName=VALUES(sslcSchoolName), sslcBoard=VALUES(sslcBoard),
-        sem1_cgpa=VALUES(sem1_cgpa), sem2_cgpa=VALUES(sem2_cgpa), sem3_cgpa=VALUES(sem3_cgpa), 
-        sem4_cgpa=VALUES(sem4_cgpa), sem5_cgpa=VALUES(sem5_cgpa), sem6_cgpa=VALUES(sem6_cgpa), 
-        sem7_cgpa=VALUES(sem7_cgpa), sem8_cgpa=VALUES(sem8_cgpa), cgpaOverall=VALUES(cgpaOverall),
-        history_of_arrear=VALUES(history_of_arrear), standing_arrear=VALUES(standing_arrear), 
-        placementWilling=VALUES(placementWilling), address=VALUES(address),
-        student_mobile=VALUES(student_mobile), secondary_mobile=VALUES(secondary_mobile),
-        college_email=VALUES(college_email), personal_email=VALUES(personal_email),
-        aadhar_number=VALUES(aadhar_number), pancard_number=VALUES(pancard_number), passport=VALUES(passport)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
-      regno, name, batch, degree, dept, gender, dob,
-      hsc_percentage, hsccutoff, hscSchoolName, hscBoard, hscYear,
-      sslc_percentage, sslcYear, sslcSchoolName, sslcBoard,
-      formatValue(sem1_cgpa), formatValue(sem2_cgpa), formatValue(sem3_cgpa), formatValue(sem4_cgpa), formatValue(sem5_cgpa),
-      formatValue(sem6_cgpa), formatValue(sem7_cgpa), formatValue(sem8_cgpa), formatValue(cgpaOverall),
-      history_of_arrear, standing_arrear, placementWilling,
+      regno, name, batch, hsc_percentage, sslc_percentage,
+      sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa,
+      sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear,
       address, student_mobile, secondary_mobile, college_email, personal_email,
       aadhar_number, pancard_number, passport
     ];
 
     db.query(query, values, (err, result) => {
       if (err) {
-        console.error("Error inserting/updating student profile:", err);
-        return res.status(500).json({ error: "Database error" });
+        console.error("Error inserting student profile:", err);
+        return res.status(500).json({ error: "Database error", details: err });
       }
-      res.json({ message: "Profile saved successfully!" });
+      res.json({ message: "Profile inserted successfully!" });
     });
 
   } catch (error) {
@@ -613,89 +571,63 @@ app.post("/api/student-profile", (req, res) => {
 });
 
 
+app.put("/api/student-profile/:regno", (req, res) => {
+  const regno = req.params.regno; // Extract registration number from URL parameters
+  const {
+    name, batch, hsc_percentage, sslc_percentage, sem1_cgpa, sem2_cgpa,
+    sem3_cgpa, sem4_cgpa, sem5_cgpa, sem6_cgpa, sem7_cgpa, sem8_cgpa,
+    history_of_arrear, standing_arrear, address, student_mobile, secondary_mobile,
+    college_email, personal_email, aadhar_number, pancard_number, passport
+  } = req.body;
 
-// 🔹 **Fetch Student Profile API (NEW)**
-app.get("/api/student-profile/:regno", (req, res) => {
-  const { regno } = req.params;
+  const query = `
+    UPDATE student_details
+    SET
+      name = ?, batch = ?, hsc_percentage = ?, sslc_percentage = ?,
+      sem1_cgpa = ?, sem2_cgpa = ?, sem3_cgpa = ?, sem4_cgpa = ?, sem5_cgpa = ?,
+      sem6_cgpa = ?, sem7_cgpa = ?, sem8_cgpa = ?, history_of_arrear = ?, standing_arrear = ?,
+      address = ?, student_mobile = ?, secondary_mobile = ?, college_email = ?, personal_email = ?,
+      aadhar_number = ?, pancard_number = ?, passport = ?
+    WHERE regno = ?;
+  `;
 
-  const query = `SELECT * FROM student_details WHERE regno = ?`;
+  const values = [
+    name, batch, hsc_percentage, sslc_percentage, sem1_cgpa, sem2_cgpa,
+    sem3_cgpa, sem4_cgpa, sem5_cgpa, sem6_cgpa, sem7_cgpa, sem8_cgpa,
+    history_of_arrear, standing_arrear, address, student_mobile, secondary_mobile,
+    college_email, personal_email, aadhar_number, pancard_number, passport, regno
+  ];
 
-  db.query(query, [regno], (err, results) => {
+  db.query(query, values, (err, result) => {
     if (err) {
-      console.error("Error fetching student profile:", err);
-      return res.status(500).json({ error: "Database error" });
+      console.error("Error updating student profile:", err);
+      return res.status(500).json({ error: "Database error", details: err });
     }
-
-    if (results.length === 0) {
-      return res.status(404).json({ error: "Student profile not found" });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Student not found" });
     }
+    res.json({ message: "Profile updated successfully!" });
+  });
+});
 
-    res.json(results[0]); // Send the student profile
+
+app.get("/api/student-profile/:regno", (req, res) => {
+  const regno = req.params.regno;
+  db.query("SELECT * FROM student_details WHERE regno = ?", [regno], (err, results) => {
+      if (err) {
+          console.error("Error fetching profile:", err);
+          return res.status(500).json({ message: "Database error" });
+      }
+      if (results.length === 0) {
+          return res.status(404).json({ message: "Student not found" });
+      }
+      res.json(results[0]); // send the first (only) matching result
   });
 });
 
 
 
-
-
-
-
-
-
-
-
-// const formatValue = (value) => (value === "" ? null : value);
-// app.post("/api/student-profile", (req, res) => {
-//   try {
-//     const {
-//       regno, name, batch, hsc_percentage, sslc_percentage,
-//       sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa,
-//       sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear,
-//       address, student_mobile, secondary_mobile, college_email, personal_email,
-//       aadhar_number, pancard_number, passport
-//     } = req.body;
-
-//     const query = `
-//       INSERT INTO student_details (
-//         regno, name, batch, hsc_percentage, sslc_percentage, 
-//         sem1_cgpa, sem2_cgpa, sem3_cgpa, sem4_cgpa, sem5_cgpa, 
-//         sem6_cgpa, sem7_cgpa, sem8_cgpa, history_of_arrear, standing_arrear, 
-//         address, student_mobile, secondary_mobile, college_email, personal_email, 
-//         aadhar_number, pancard_number, passport
-//       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-//       ON DUPLICATE KEY UPDATE 
-//         name=VALUES(name), batch=VALUES(batch), hsc_percentage=VALUES(hsc_percentage),
-//         sslc_percentage=VALUES(sslc_percentage), sem1_cgpa=VALUES(sem1_cgpa), sem2_cgpa=VALUES(sem2_cgpa), 
-//         sem3_cgpa=VALUES(sem3_cgpa), sem4_cgpa=VALUES(sem4_cgpa), sem5_cgpa=VALUES(sem5_cgpa),
-//         sem6_cgpa=VALUES(sem6_cgpa), sem7_cgpa=VALUES(sem7_cgpa), sem8_cgpa=VALUES(sem8_cgpa), 
-//         history_of_arrear=VALUES(history_of_arrear), standing_arrear=VALUES(standing_arrear),
-//         address=VALUES(address), student_mobile=VALUES(student_mobile), secondary_mobile=VALUES(secondary_mobile),
-//         college_email=VALUES(college_email), personal_email=VALUES(personal_email),
-//         aadhar_number=VALUES(aadhar_number), pancard_number=VALUES(pancard_number), passport=VALUES(passport)
-//     `;
-
-//     const values = [
-//       regno, name, batch, hsc_percentage, sslc_percentage,
-//       formatValue(sem1_cgpa), formatValue(sem2_cgpa), formatValue(sem3_cgpa), formatValue(sem4_cgpa), formatValue(sem5_cgpa),
-//       formatValue(sem6_cgpa), formatValue(sem7_cgpa), formatValue(sem8_cgpa), history_of_arrear, standing_arrear,
-//       address, student_mobile, secondary_mobile, college_email, personal_email,
-//       aadhar_number, pancard_number, passport
-//     ];
-
-//     db.query(query, values, (err, result) => {
-//       if (err) {
-//         console.error("Error inserting/updating student profile:", err);
-//         return res.status(500).json({ error: "Database error" });
-//       }
-//       res.json({ message: "Profile saved successfully!" });
-//     });
-
-//   } catch (error) {
-//     console.error("Server error:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
+// DRIVE REGISTER 
 
 app.post("/api/register-drive", (req, res) => {
   const { drive_id, regno, company_name, register } = req.body;
@@ -743,8 +675,6 @@ app.get('/api/registered-drives/:regno', async (req, res) => {
     res.status(500).json({ error: "Failed to fetch registered drives" });
   }
 });
-
-
 
 
 
@@ -827,6 +757,7 @@ app.post("/api/send-emails", async (req, res) => {
 
 
 //staff page
+
 app.get("/api/students", (req, res) => {
   const { startRegNo, endRegNo } = req.query;
 
@@ -849,6 +780,7 @@ app.get("/api/students", (req, res) => {
 
 
 //hackathon
+
 app.post('/api/hackathons', (req, res) => {
   const { content, link } = req.body;
 
@@ -866,6 +798,7 @@ app.post('/api/hackathons', (req, res) => {
 });
 
 // Endpoint to fetch hackathons
+
 app.get('/api/hackathons', (req, res) => {
   const sql = "SELECT * FROM hackathons ORDER BY created_at DESC";
   db.query(sql, (err, results) => {
@@ -877,6 +810,7 @@ app.get('/api/hackathons', (req, res) => {
 });
 
 // Delete a hackathon
+
 app.delete('/api/hackathons/:id', (req, res) => {
   const { id } = req.params;
 
@@ -944,7 +878,23 @@ app.post("/api/import-placed-students", async (req, res) => {
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
+  
 
+
+  // API to get notifications
+  app.get("/api/notifications", (req, res) => {
+    const query = `SELECT * FROM notifications ORDER BY created_at DESC LIMIT 5`;
+  
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error("Notification fetch error:", err);
+        return res.status(500).json({ message: "Error fetching notifications" });
+      }
+  
+      res.json(results);
+    });
+  });
+  
 
 
 

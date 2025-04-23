@@ -50,10 +50,10 @@ const EditCompany = () => {
 
   return (
     <>
-        {/* <button onClick={() => navigate(-1)} className="back-button">
+    <button onClick={() => navigate(-1)} className="back-button">
         ← Back
-      </button> */}
-    <div className="company-details-container"></div>
+      </button>
+      
     <form onSubmit={handleSubmit}>
       <h2>Edit Company - {companyName}</h2>
 
@@ -96,6 +96,7 @@ const EditCompany = () => {
       <button type="submit">Save Changes</button>
     </form>
     </>
+    
   );
 };
 

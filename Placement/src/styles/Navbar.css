@@ -91,7 +91,7 @@
 
 .navbar-icons .material-symbols-outlined:hover {
   transform: scale(1.2);
-  color: #ffd700;
+  color: #000dff;
 }
 
 .navbar-icons a {
@@ -101,7 +101,7 @@
 }
 
 .navbar-icons a:hover {
-  color: #ffd700;
+  color: #0022ff;
 }
 
 /* Logout Button */
@@ -159,6 +159,90 @@
 
 #clgname{
   color: white;
+}
+
+
+
+/* Notification icon and dropdown */
+.notification-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.material-symbols-outlined {
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: 40px; /* Adjust according to your layout */
+  right: 0;
+  width: 300px;
+  max-height: 300px; /* Limit the height of the dropdown */
+  overflow-y: auto;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  padding: 10px;
+  font-family: Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+.notification-item {
+  padding: 10px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.notification-item:hover {
+  background-color: #f0f0f0;
+}
+
+/* Last notification item without bottom border */
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+/* Empty notification message styling */
+.notification-item.no-notifications {
+  text-align: center;
+  color: #888;
+  font-style: italic;
+}
+
+/* Style for notification icon */
+.notification-wrapper span.material-symbols-outlined {
+  font-size: 30px;
+  /* color: #007BFF; Blue color */
+  margin-right: 15px;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.notification-wrapper span.material-symbols-outlined:hover {
+  color: #0056b3; /* Darker blue on hover */
+}
+
+/* Optional: Add a badge to show the count of unread notifications */
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #ff5e57;
+  color: white;
+  font-size: 12px;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 

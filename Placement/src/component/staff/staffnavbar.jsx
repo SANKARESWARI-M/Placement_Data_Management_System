@@ -1,9 +1,24 @@
-import React from "react";
+import React ,{useState,useEffect}  from "react";
 import { Link } from "react-router-dom";
+import axios from "axios";
 import '../../styles/Navbar.css';
 import LogoutButton from "../Logout";
 
 const Navbar = () => {
+  const [notifications, setNotifications] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  useEffect(() => {
+    axios.get("http://localhost:5000/api/notifications")
+      .then(res => {
+        console.log("Notifications response:", res.data);
+        setNotifications(res.data);
+      })
+      .catch(err => {
+        console.error("Error fetching notifications:", err);
+      });
+  }, []);
+
   return (
     <nav className="navbar">
       {/* Logo Section */}
@@ -27,12 +42,32 @@ const Navbar = () => {
 
       {/* Right Section: Icons & Logout */}
       <div className="navbar-right">
-        <div className="navbar-icons">
-          <span className="material-symbols-outlined">notifications</span> 
-          <Link to="/studentprofile" title="Profile">
-            <span className="material-symbols-outlined">account_circle</span>
-          </Link>
-        </div>
+                    <div className="navbar-icons">
+                      {/* Notifications */}
+                      <div 
+                        className="notification-wrapper" 
+                        onClick={() => setShowDropdown(!showDropdown)}
+                        style={{ position: "relative", cursor: "pointer" }}
+                      >
+                        <span className="material-symbols-outlined">notifications</span>
+                        {showDropdown && (
+                          <div className="notification-dropdown">
+                            {notifications.length === 0 ? (
+                              <p className="notification-item">No new notifications</p>
+                            ) : (
+                              notifications.map((notif, index) => (
+                                <p key={index} className="notification-item">{notif.message}</p>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    
+            
+                      <Link to="/studentprofile" title="Profile">
+                        <span className="material-symbols-outlined">account_circle</span>
+                      </Link>
+                    </div>
 
         <LogoutButton className="logout-button" />
       </div>
